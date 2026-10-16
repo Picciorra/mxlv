@@ -1,6 +1,6 @@
 # MXLV - Mercoledì x la Vita
 
-Webapp in sola lettura del gioco del mercoledì. Per ora contiene solo la Classifica.
+Webapp in sola lettura del gioco del mercoledì. Schermate: Prossimo mercoledì e Classifica.
 
 I dati vengono letti dal Google Sheet "Mercoledì 2026" pubblicato sul web
 (tab Leaderboard, Storico Leaderboard e Registro): tutti i calcoli li fa il foglio,

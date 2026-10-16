@@ -206,7 +206,7 @@ const nextIndex = (nights) => {
 
 function avatar(name, cls = '') {
   // Se la foto manca si vedono le iniziali.
-  return `<img class="${cls}" src="img/foto/${slug(name)}.jpg" alt="" loading="lazy" onerror="this.outerHTML='<span class=&quot;initials ${cls}&quot;>${esc(initials(name))}</span>'">`;
+  return `<img class="${cls}" src="img/foto/${slug(name)}.jpg?v=2" alt="" loading="lazy" onerror="this.outerHTML='<span class=&quot;initials ${cls}&quot;>${esc(initials(name))}</span>'">`;
 }
 
 // "Gags @Bollicine" -> { title: "Gags", place: "Bollicine" }

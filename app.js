@@ -2,12 +2,15 @@
 
 // Fonte dati: il Google Sheet "Mercoledì 2026" pubblicato sul web.
 // Tutti i calcoli li fa il foglio: qui si leggono e si mostrano.
-const SHEET_ID = 'RIMOSSO';
+// Il riferimento al foglio non sta nel repo: arriva da config.js, che viene
+// generato al momento della pubblicazione partendo da un segreto di GitHub.
+const CONFIG = window.MXLV_CONFIG || {};
+const SHEET_ID = CONFIG.sheetId || '';
 const SHEET = `https://docs.google.com/spreadsheets/d/e/${SHEET_ID}/pub?single=true&output=csv&gid=`;
 const GID = {
-  leaderboard: '1279013194',
-  storicoLeaderboard: '2088317534',
-  registro: '970381673'
+  leaderboard: CONFIG.gidLeaderboard || '',
+  storicoLeaderboard: CONFIG.gidStoricoLeaderboard || '',
+  registro: CONFIG.gidRegistro || ''
 };
 const REGISTRO_URL = `https://docs.google.com/spreadsheets/d/e/${SHEET_ID}/pubhtml?gid=${GID.registro}&single=true`;
 const CACHE_KEY = 'mxlv-data-v3';

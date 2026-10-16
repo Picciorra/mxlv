@@ -1,0 +1,46 @@
+# Pubblica l'app su GitHub Pages.
+# Il riferimento al foglio Google non e' nel repo: viene scritto in config.js
+# al momento della pubblicazione, partendo dai segreti del repository.
+name: Pubblica
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Crea config.js
+        env:
+          SHEET_ID: ${{ secrets.MXLV_SHEET_ID }}
+        run: |
+          test -n "$SHEET_ID" || { echo "Manca il segreto MXLV_SHEET_ID"; exit 1; }
+          cat > config.js <<CONF
+          window.MXLV_CONFIG = {
+            sheetId: '${SHEET_ID}',
+            gidLeaderboard: '1279013194',
+            gidStoricoLeaderboard: '2088317534',
+            gidRegistro: '970381673'
+          };
+          CONF
+      - name: Prepara il sito
+        run: |
+          mkdir _site
+          cp -r index.html app.js config.js styles.css sw.js manifest.webmanifest robots.txt img fonts _site/
+      - uses: actions/upload-pages-artifact@v3
+      - id: deployment
+        uses: actions/deploy-pages@v4

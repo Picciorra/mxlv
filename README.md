@@ -2,9 +2,10 @@
 
 Webapp in sola lettura del gioco del mercoledì. Schermate: Prossimo mercoledì, Classifica, Storico (classifica nel tempo e serate), dettaglio serata, Profilo e Regolamento.
 
-I dati vengono letti dal Google Sheet "Mercoledì 2026" pubblicato sul web
-(tab Leaderboard, Storico Leaderboard e Registro): tutti i calcoli li fa il foglio,
-l'app li mostra. Per aggiornare la classifica basta modificare il foglio.
+I dati vengono letti da un Google Sheet pubblicato sul web: tutti i calcoli li fa il foglio,
+l'app li mostra. Il riferimento al foglio non è nel repo: la pubblicazione lo prende
+dal segreto `MXLV_SHEET_ID` e genera `config.js`. In locale `config.js` va creato a mano
+(è escluso da git).
 
 Sito statico, nessuna build: `index.html`, `styles.css`, `app.js`.
-Pubblicato con GitHub Pages dal branch `main`.
+Pubblicato con GitHub Pages tramite GitHub Actions (`.github/workflows/deploy.yml`).

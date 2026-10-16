@@ -453,11 +453,11 @@ function renderClassifica(data) {
     : 'Ordinata per Attendance Rate';
 
   const rows = ps.slice(3).map((p) => {
-    const streak = num(stat(data, p.name, 'Streak Attuale'));
+    const presenze = num(stat(data, p.name, 'Presenze')) ?? num(p.present);
     return `
     <a class="row" href="#profilo/${slug(p.name)}">
       <div class="col-pos"><span class="pos">${p.pos}</span>${delta(p)}</div>
-      <div class="col-name">${avatar(p.name)}<div class="who"><span class="name">${esc(p.name)}</span>${streak !== null ? `<span class="sub">Streak ${streak}</span>` : ''}</div></div>
+      <div class="col-name">${avatar(p.name)}<div class="who"><span class="name">${esc(p.name)}</span>${presenze !== null ? `<span class="sub">${presenze} ${presenze === 1 ? 'presenza' : 'presenze'}</span>` : ''}</div></div>
       <span class="col-ar">${esc(p.ar)}</span>
     </a>`;
   }).join('');

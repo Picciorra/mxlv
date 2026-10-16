@@ -580,8 +580,186 @@ function renderStorico(data) {
 }
 
 // =====================================================================
-// Vista: Profilo
+// Vista: Profilo (con la figurina)
 // =====================================================================
+
+let figurinaCleanup = null;
+let motionAsked = false;
+
+function figurinaHTML(p, d, data, s) {
+  const [nome, ...cognome] = p.name.split(' ');
+  const arNum = parseFloat(String(p.ar || '').replace(',', '.'));
+  const deg = isNaN(arNum) ? 0 : Math.max(0, Math.min(100, arNum)) * 3.6;
+  const arShort = isNaN(arNum) ? '-' : String(Math.round(arNum * 10) / 10).replace('.', ',');
+
+  // Mini grafico della posizione nel tempo
+  const ranks = data.history.map((w) => w.pos[p.name]).filter(Boolean);
+  const maxRank = Math.max(data.players.length, 2);
+  const W = 220, H = 54;
+  let spark = '';
+  if (ranks.length > 1) {
+    const pts = ranks.map((r, i) => [(i / (ranks.length - 1)) * W, 4 + ((r - 1) / (maxRank - 1)) * (H - 8)]);
+    const line = pts.map(([x, y], i) => (i ? 'L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1)).join(' ');
+    spark = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
+      <path d="${line} L${W} ${H} L0 ${H} Z" class="spark-area"/>
+      <path d="${line}" class="spark-line" vector-effect="non-scaling-stroke"/>
+    </svg>`;
+  }
+
+  const barCount = d.streakMax ? Math.min(d.streakMax, 20) : 0;
+  const bars = Array.from({ length: barCount }, (_, i) => `<span class="${i < (d.streakNow || 0) ? 'on' : ''}"></span>`).join('');
+  const dash = (v) => (v === null || v === undefined ? '-' : v);
+
+  return `
+  <div class="fig-stage" id="fig-stage">
+    <button type="button" class="fig" id="fig" aria-label="Figurina di ${esc(p.name)}. Tocca per girarla." aria-pressed="false">
+
+      <div class="fig-face fig-front">
+        <div class="fig-window">
+          <span class="fig-stripe s1" aria-hidden="true"></span>
+          <span class="fig-stripe s2" aria-hidden="true"></span>
+          ${avatar(p.name, 'fig-photo')}
+          ${p.pos ? `<div class="fig-badge"><span>${p.pos}°</span><small>POSTO</small></div>` : ''}
+          <span class="fig-year">2026</span>
+        </div>
+        <div class="fig-band">
+          <div class="fig-names"><span class="fig-surname">${esc(cognome.join(' ') || nome)}</span><span class="fig-name">${esc(cognome.length ? nome : '')}</span></div>
+          <div class="fig-ar"><span>${esc(p.ar || '-')}</span><small>I REMBRANDT</small></div>
+        </div>
+        <span class="fig-lens" aria-hidden="true"></span>
+        <span class="fig-flash" aria-hidden="true"></span>
+      </div>
+
+      <div class="fig-face fig-back">
+        <span class="fig-back-lines" aria-hidden="true"></span>
+        <span class="fig-back-frame" aria-hidden="true"></span>
+        <div class="fb-head">
+          <div class="fb-id">
+            <small>CARTA GIOCATORE</small>
+            <span class="fb-surname">${esc(cognome.join(' ') || nome)}</span>
+            <span class="fb-name">${esc(cognome.length ? nome : '')}</span>
+          </div>
+          ${p.pos ? `<span class="fb-num">#${p.pos}</span>` : ''}
+        </div>
+        <div class="fb-main">
+          <div class="fb-gauge" style="--deg:${deg.toFixed(1)}deg"><div><span>${arShort}</span><small>A.R. %</small></div></div>
+          <div class="fb-stats">
+            <div><span>${dash(d.presenze)}</span><small>PRESENZE</small></div>
+            <div><span>${dash(d.assenze)}</span><small>ASSENZE</small></div>
+            <div><span>${dash(d.lavoro)}</span><small>LAVORO</small></div>
+            <div><span>${dash(d.bonusAcc)} / ${dash(d.bonusRes)}</span><small>BONUS</small></div>
+          </div>
+        </div>
+        ${spark ? `<div class="fb-spark">
+          <div class="fb-spark-head"><small>ANDAMENTO 2026</small><span>miglior posizione <b>${s.best}°</b></span></div>
+          ${spark}
+        </div>` : ''}
+        ${barCount ? `<div class="fb-streak">
+          <div class="fb-streak-head"><small>STREAK</small><span>${dash(d.streakNow)} / MAX ${d.streakMax}</span></div>
+          <div class="fb-bars" style="grid-template-columns: repeat(${barCount}, minmax(0, 1fr))">${bars}</div>
+        </div>` : ''}
+        <div class="fb-foot">
+          <span>${p.pos ? `Figurina n. ${p.pos} di ${data.players.length}` : 'Mercoledì x la Vita'}</span>
+          <span class="fb-seal">MXLV ORIGINALE</span>
+        </div>
+        <span class="fig-lens" aria-hidden="true"></span>
+        <span class="fig-flash" aria-hidden="true"></span>
+      </div>
+
+    </button>
+  </div>
+  <p class="muted small center fig-hint" id="fig-hint">Inclina il telefono per muoverla, tocca per girarla</p>`;
+}
+
+// Movimento della figurina: giroscopio sul telefono, dito o mouse come ripiego.
+function setupFigurina() {
+  const stage = document.getElementById('fig-stage');
+  const fig = document.getElementById('fig');
+  if (!stage || !fig) return null;
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const IDLE = { rx: 5, ry: -12, gx: 30, gy: 20 };
+  let target = { ...IDLE }, cur = { ...IDLE }, raf = 0, base = null, usingMotion = false;
+
+  const apply = () => {
+    cur.rx += (target.rx - cur.rx) * 0.18;
+    cur.ry += (target.ry - cur.ry) * 0.18;
+    cur.gx += (target.gx - cur.gx) * 0.18;
+    cur.gy += (target.gy - cur.gy) * 0.18;
+    fig.style.setProperty('--rx', cur.rx.toFixed(2) + 'deg');
+    fig.style.setProperty('--ry', cur.ry.toFixed(2) + 'deg');
+    fig.style.setProperty('--gx', cur.gx.toFixed(1) + '%');
+    fig.style.setProperty('--gy', cur.gy.toFixed(1) + '%');
+    fig.style.setProperty('--ga', ((cur.gx - 50) * 1.2).toFixed(1) + 'deg');
+    fig.style.setProperty('--edge', Math.min(1, (Math.abs(cur.rx) + Math.abs(cur.ry)) / 22).toFixed(3));
+    const moving = Math.abs(target.rx - cur.rx) + Math.abs(target.ry - cur.ry) + Math.abs(target.gx - cur.gx) > 0.05;
+    raf = moving ? requestAnimationFrame(apply) : 0;
+  };
+  const kick = () => { if (!raf) raf = requestAnimationFrame(apply); };
+  const clamp = (v, a) => Math.max(-a, Math.min(a, v));
+
+  const onPointer = (e) => {
+    if (usingMotion) return;
+    const r = stage.getBoundingClientRect();
+    const px = (e.clientX - r.left) / r.width, py = (e.clientY - r.top) / r.height;
+    target = { rx: (0.5 - py) * 22, ry: (px - 0.5) * 28, gx: px * 100, gy: py * 100 };
+    kick();
+  };
+  const onLeave = () => { if (!usingMotion) { target = { ...IDLE }; kick(); } };
+  const onOrient = (e) => {
+    if (e.beta === null || e.gamma === null) return;
+    usingMotion = true;
+    if (!base) base = { beta: e.beta, gamma: e.gamma };
+    const rx = clamp(-(e.beta - base.beta) * 0.7, 20);
+    const ry = clamp((e.gamma - base.gamma) * 0.8, 24);
+    target = { rx: rx + 4, ry, gx: 50 + ry * 2, gy: 50 - rx * 2 };
+    kick();
+  };
+
+  const startMotion = () => {
+    if (reduce || !('DeviceOrientationEvent' in window)) return;
+    window.addEventListener('deviceorientation', onOrient);
+  };
+
+  // Giro con effetto lente
+  const flip = () => {
+    const flipped = !fig.classList.contains('flipped');
+    fig.classList.add('flipping');
+    fig.classList.toggle('flipped', flipped);
+    fig.setAttribute('aria-pressed', String(flipped));
+    fig.querySelectorAll('.fig-flash').forEach((el) => {
+      el.classList.remove('go'); void el.offsetWidth; el.classList.add('go');
+    });
+    clearTimeout(fig._t);
+    fig._t = setTimeout(() => fig.classList.remove('flipping'), 650);
+  };
+  const onClick = () => {
+    // Su iPhone il permesso per il giroscopio va chiesto dentro un tocco.
+    const DOE = window.DeviceOrientationEvent;
+    if (!reduce && !motionAsked && DOE && typeof DOE.requestPermission === 'function') {
+      motionAsked = true;
+      DOE.requestPermission().then((r) => { if (r === 'granted') startMotion(); }).catch(() => {});
+    }
+    flip();
+  };
+
+  if (!reduce) {
+    stage.addEventListener('pointermove', onPointer);
+    stage.addEventListener('pointerleave', onLeave);
+    const DOE = window.DeviceOrientationEvent;
+    if (!(DOE && typeof DOE.requestPermission === 'function')) startMotion();
+    else if (motionAsked) startMotion();
+  }
+  fig.addEventListener('click', onClick);
+  apply();
+
+  return () => {
+    cancelAnimationFrame(raf);
+    clearTimeout(fig._t);
+    stage.removeEventListener('pointermove', onPointer);
+    stage.removeEventListener('pointerleave', onLeave);
+    window.removeEventListener('deviceorientation', onOrient);
+  };
+}
 
 function renderProfilo(data, key) {
   let p = data.players.find((pl) => slug(pl.name) === key);
@@ -594,72 +772,43 @@ function renderProfilo(data, key) {
     return;
   }
   const name = p.name;
-  const presenze = num(stat(data, name, 'Presenze')) ?? num(p.present);
-  const assenze = num(stat(data, name, 'Assenze')) ?? num(p.absent);
-  const lavoro = num(stat(data, name, '✈')) ?? num(p.work);
-  const sospesi = num(stat(data, name, 'Giorni Sospesi'));
-  const streakNow = num(stat(data, name, 'Streak Attuale'));
-  const streakMax = num(stat(data, name, 'Streak Max'));
-  const bonusAcc = num(stat(data, name, 'Bonus accumulati'));
-  const bonusRes = num(stat(data, name, 'Bonus residui'));
-  const giocabili = presenze !== null && assenze !== null ? presenze + assenze : null;
-  const arNum = parseFloat(String(p.ar || '').replace(',', '.'));
-  const [nome, ...cognome] = name.split(' ');
-  const barCount = streakMax ? Math.min(streakMax, 30) : 0;
-  const bars = Array.from({ length: barCount }, (_, i) => `<span class="${i < (streakNow || 0) ? 'on' : ''}"></span>`).join('');
+  const d = {
+    presenze: num(stat(data, name, 'Presenze')) ?? num(p.present),
+    assenze: num(stat(data, name, 'Assenze')) ?? num(p.absent),
+    lavoro: num(stat(data, name, '✈')) ?? num(p.work),
+    sospesi: num(stat(data, name, 'Giorni Sospesi')),
+    streakNow: num(stat(data, name, 'Streak Attuale')),
+    streakMax: num(stat(data, name, 'Streak Max')),
+    bonusAcc: num(stat(data, name, 'Bonus accumulati')),
+    bonusRes: num(stat(data, name, 'Bonus residui'))
+  };
   const s = rankSummary(data.history, name);
+  const dash = (v) => (v === null || v === undefined ? '-' : v);
 
   $content.innerHTML = `
     ${backLink('#classifica', 'Classifica')}
+    <h1 class="sr-only">${esc(name)}</h1>
 
-    <section class="profile-head">
-      ${avatar(name, 'big')}
-      <div class="profile-id">
-        <h1 class="profile-name">${esc(nome)}<br>${esc(cognome.join(' '))}</h1>
-        <div class="profile-tags">
-          ${p.pos ? `<span class="pill">${p.pos}° posto</span>` : ''}
-          ${delta(p)}
-        </div>
-      </div>
-    </section>
-
-    <section class="card ar-card">
-      <div class="ar-top">
-        <span class="label caps">Attendance rate</span>
-        ${giocabili !== null ? `<span class="label">${giocabili} serate giocabili</span>` : ''}
-      </div>
-      <span class="ar-big">${esc(p.ar || '-')}</span>
-      ${!isNaN(arNum) ? `<div class="bar"><span style="width:${Math.max(0, Math.min(100, arNum))}%"></span></div>` : ''}
-    </section>
+    ${figurinaHTML(p, d, data, s)}
 
     <section class="stat-grid four">
-      <div class="card stat"><span class="stat-num">${presenze ?? '-'}</span><span class="label">Presenze</span></div>
-      <div class="card stat"><span class="stat-num">${assenze ?? '-'}</span><span class="label">Assenze</span></div>
-      <div class="card stat"><span class="stat-num">${lavoro ?? '-'}</span><span class="label">Lavoro</span></div>
-      <div class="card stat"><span class="stat-num">${sospesi ?? '-'}</span><span class="label">Sospesi</span></div>
+      <div class="card stat"><span class="stat-num">${dash(d.presenze)}</span><span class="label">Presenze</span></div>
+      <div class="card stat"><span class="stat-num">${dash(d.assenze)}</span><span class="label">Assenze</span></div>
+      <div class="card stat"><span class="stat-num">${dash(d.lavoro)}</span><span class="label">Lavoro</span></div>
+      <div class="card stat"><span class="stat-num">${dash(d.sospesi)}</span><span class="label">Sospesi</span></div>
     </section>
 
-    <section class="card streak-card">
-      <span class="label caps">Streak</span>
-      <div class="two-col">
-        <div class="stat-inline"><span class="stat-num xl">${streakNow ?? '-'}</span><span class="label">Attuale</span></div>
-        <div class="stat-inline"><span class="stat-num xl">${streakMax ?? '-'}</span><span class="label">Migliore della stagione</span></div>
-      </div>
-      ${barCount ? `<div class="streak-bars" style="grid-template-columns: repeat(${barCount}, minmax(0, 1fr))" aria-hidden="true">${bars}</div>` : ''}
-    </section>
-
-    <section class="card bonus-card">
-      <div class="who"><span class="label caps">Bonus</span><span class="muted small">1 ogni 10 presenze</span></div>
-      <div class="bonus-nums">
-        <div class="stat-inline center"><span class="stat-num orange">${bonusAcc ?? '-'}</span><span class="label">Accumulati</span></div>
-        <div class="stat-inline center"><span class="stat-num">${bonusRes ?? '-'}</span><span class="label">Residui</span></div>
-      </div>
+    <section class="card duo-card">
+      <div class="who"><span class="label caps">Streak</span><span class="small">Attuale ${dash(d.streakNow)} · migliore ${dash(d.streakMax)}</span></div>
+      <div class="who right"><span class="label caps">Bonus</span><span class="small">${dash(d.bonusAcc)} accumulati · ${dash(d.bonusRes)} residui</span></div>
     </section>
 
     ${data.history.length > 1 && s.best ? `<section class="card chart-card">
-      <div class="ar-top"><span class="label caps">Posizione nel tempo</span><span class="label">Migliore: ${s.best}°${s.top ? ` · ${s.top} sett. in testa` : ''}</span></div>
+      <div class="ar-top"><span class="label caps">Posizione nel tempo</span><span class="label">Migliore: ${s.best}°</span></div>
       ${rankChart(data.history, data.players.map((pl) => pl.name), name, { height: 140, compact: true })}
     </section>` : ''}`;
+
+  figurinaCleanup = setupFigurina();
 }
 
 // =====================================================================
@@ -795,6 +944,7 @@ function currentRoute() {
 
 function render() {
   clearInterval(countdownTimer);
+  if (figurinaCleanup) { figurinaCleanup(); figurinaCleanup = null; }
   const route = currentRoute();
   document.title = `MXLV - ${route.title}`;
   $tabs.forEach((a) => {

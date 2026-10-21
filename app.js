@@ -297,7 +297,8 @@ function renderMercoledi(data) {
   const timeBlock = live
     ? `<div class="countdown">
         <div class="live"><span class="live-dot"></span>Si gioca stasera</div>
-        ${next.activity ? '' : '<span class="muted small">Attività in arrivo dal chiamante.</span>'}
+        <span class="muted small">Che tu vinca o che tu perda, il mercoledì nessuno scherza.</span>
+        <a class="live-cta" href="#classifica">Controlla la classifica ${icons.chevronRight}</a>
       </div>`
     : `<div class="countdown">
         <span class="label">Mancano</span>

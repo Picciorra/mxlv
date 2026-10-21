@@ -568,3 +568,12 @@ p.center { margin: -8px 0 0; }
   .fig.flipping { transition: none; }
   .fig-flash.go { animation: none; }
 }
+
+.live-cta {
+  align-self: flex-start;
+  display: inline-flex; align-items: center; gap: 4px;
+  min-height: 44px; margin-top: 4px; padding: 0 14px 0 16px;
+  border-radius: 12px; background: var(--accent); color: var(--bg);
+  font-weight: 700; font-size: 15px; text-decoration: none;
+}
+.live-cta:active { opacity: 0.85; }

@@ -667,82 +667,109 @@ function renderCalendario(data) {
 let figurinaCleanup = null;
 let motionAsked = false;
 
-function figurinaHTML(p, d, data, s) {
-  const [nome, ...cognome] = p.name.split(' ');
-  const arNum = parseFloat(String(p.ar || '').replace(',', '.'));
-  const deg = isNaN(arNum) ? 0 : Math.max(0, Math.min(100, arNum)) * 3.6;
-  const arShort = isNaN(arNum) ? '-' : String(Math.round(arNum * 10) / 10).replace('.', ',');
+// Rarità della carta in base alla posizione in classifica.
+function figurinaMaterial(p, data) {
+  const pos = num(p.pos);
+  if (!pos) return 'base';
+  if (pos === 1) return 'oro';
+  if (pos === 2) return 'argento';
+  if (pos === 3) return 'bronzo';
+  const all = [...new Set(data.players.map((pl) => num(pl.pos)).filter(Boolean))].sort((a, b) => b - a);
+  if (all.length > 4 && pos === all[0]) return 'ruggine';
+  if (all.length > 5 && pos === all[1]) return 'piccante';
+  return 'base';
+}
 
-  // Mini grafico della posizione nel tempo
+const FIG_LABEL = { oro: 'ORO', argento: 'ARGENTO', bronzo: 'BRONZO', base: 'BASE', piccante: 'PICCANTE', ruggine: 'RUGGINE' };
+
+const FIG_WEB = (paths) => `<g fill="none" stroke="rgba(255,255,255,.75)" stroke-width="0.8"><path d="M100 0 L0 0 M100 0 L8 38 M100 0 L34 70 M100 0 L66 92 M100 0 L100 100"></path>${paths}</g>`;
+
+function figurinaHTML(p, d, data) {
+  const [nome, ...cognome] = p.name.split(' ');
+  const surname = cognome.join(' ') || nome;
+  const firstname = cognome.length ? nome : '';
+  const mat = figurinaMaterial(p, data);
+  const top = (d.streakNow || 0) >= 10;
+  const rust = mat === 'ruggine';
+  const storm = mat === 'piccante';
+  const chip = top ? 'TOP STREAK' : (['oro', 'argento', 'bronzo'].includes(mat) ? FIG_LABEL[mat] : '');
+  const dash = (v) => (v === null || v === undefined ? '-' : v);
+
+  const dl = num(p.delta);
+  const deltaHTML = dl ? `<i class="${dl > 0 ? 'up' : 'down'}">${dl > 0 ? '▲' : '▼'}${Math.abs(dl)}</i>` : '';
+
+  // Andamento della posizione nella stagione
   const ranks = data.history.map((w) => w.pos[p.name]).filter(Boolean);
   const maxRank = Math.max(data.players.length, 2);
-  const W = 220, H = 54;
+  const W = 200, H = 48;
   let spark = '';
   if (ranks.length > 1) {
     const pts = ranks.map((r, i) => [(i / (ranks.length - 1)) * W, 4 + ((r - 1) / (maxRank - 1)) * (H - 8)]);
     const line = pts.map(([x, y], i) => (i ? 'L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1)).join(' ');
-    spark = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
-      <path d="${line} L${W} ${H} L0 ${H} Z" class="spark-area"/>
-      <path d="${line}" class="spark-line" vector-effect="non-scaling-stroke"/>
-    </svg>`;
+    spark = `<div class="fb-spark">
+      <span class="fb-lbl">ANDAMENTO 2026</span>
+      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
+        <path d="${line} L${W} ${H} L0 ${H} Z" class="spark-area"/>
+        <path d="${line}" class="spark-line" vector-effect="non-scaling-stroke"/>
+      </svg>
+    </div>`;
   }
 
-  const barCount = d.streakMax ? Math.min(d.streakMax, 20) : 0;
-  const bars = Array.from({ length: barCount }, (_, i) => `<span class="${i < (d.streakNow || 0) ? 'on' : ''}"></span>`).join('');
-  const dash = (v) => (v === null || v === undefined ? '-' : v);
+  const nBars = Math.min(d.streakMax || 0, 24);
+  const bars = Array.from({ length: nBars }, (_, i) => `<span class="${i < (d.streakNow || 0) ? 'on' : ''}"></span>`).join('');
+
+  const rustBack = rust ? `
+          <svg class="fig-abs" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" style="opacity:.18"><path d="M8 78 C 30 70, 40 52, 52 30 C 58 46, 70 62, 92 74 Z" fill="#2A170B"></path></svg>` : '';
+  const stormFx = storm ? `
+          <svg class="fig-bolt b1" viewBox="0 0 100 160" aria-hidden="true"><path d="M58 0 L20 82 L46 82 L30 160 L84 58 L56 58 L74 0 Z" fill="#E3121B" stroke="#7A0005" stroke-width="2"></path></svg>
+          <svg class="fig-bolt b2" viewBox="0 0 100 160" aria-hidden="true"><path d="M42 0 L80 82 L54 82 L70 160 L16 58 L44 58 L26 0 Z" fill="#FF3B30" stroke="#7A0005" stroke-width="2"></path></svg>
+          <span class="fig-storm s1" aria-hidden="true"></span>
+          <span class="fig-storm s2" aria-hidden="true"></span>` : '';
+  const rustFront = rust ? `
+          <svg class="fig-web w1" viewBox="0 0 100 100" aria-hidden="true">${FIG_WEB('<path d="M78 0 Q82 10 92 9 Q96 16 100 22"></path><path d="M54 0 Q60 14 72 18 Q80 30 90 36 Q96 44 100 46"></path><path d="M30 0 Q40 18 52 28 Q60 44 76 54 Q86 66 100 70"></path><path d="M10 0 Q22 24 32 38 Q42 58 58 72 Q70 86 82 100"></path>')}</svg>
+          <svg class="fig-abs" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" style="mix-blend-mode:multiply;opacity:.7"><g fill="#7A3A12"><circle cx="12" cy="20" r="9" opacity=".55"></circle><circle cx="80" cy="64" r="12" opacity=".45"></circle><circle cx="30" cy="88" r="10" opacity=".55"></circle><circle cx="66" cy="12" r="6" opacity=".5"></circle><circle cx="92" cy="90" r="8" opacity=".5"></circle></g></svg>` : '';
+  const rustCracks = rust ? `
+          <svg class="fig-abs" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M62 0 L58 18 L66 26 L60 44 L70 58 M58 18 L46 24 L40 38 M66 26 L80 30 M0 64 L14 60 L22 70 L36 66" fill="none" stroke="rgba(30,15,6,.55)" stroke-width="1.1" vector-effect="non-scaling-stroke"></path></svg>` : '';
 
   return `
   <div class="fig-stage" id="fig-stage">
-    <button type="button" class="fig" id="fig" aria-label="Figurina di ${esc(p.name)}. Tocca per girarla." aria-pressed="false">
+    <button type="button" class="fig m-${mat}${top ? ' top-streak' : ''}" id="fig" aria-label="Figurina di ${esc(p.name)}${chip ? ', ' + chip : ''}. Tocca per girarla." aria-pressed="false">
 
       <div class="fig-face fig-front">
         <div class="fig-window">
           <span class="fig-stripe s1" aria-hidden="true"></span>
-          <span class="fig-stripe s2" aria-hidden="true"></span>
-          ${avatar(p.name, 'fig-photo')}
-          ${p.pos ? `<div class="fig-badge"><span>${p.pos}°</span><small>POSTO</small></div>` : ''}
-          <span class="fig-year">2026</span>
+          <span class="fig-stripe s2" aria-hidden="true"></span>${rustBack}${stormFx}
+          ${avatar(p.name, 'fig-photo')}${rustFront}
+          ${p.pos ? `<div class="fig-badge"><span>${p.pos}°</span>${deltaHTML}</div>` : ''}
+          ${top ? `<span class="fig-tag">TOP STREAK ${d.streakNow}</span>` : ''}${rustCracks}
         </div>
         <div class="fig-band">
-          <div class="fig-names"><span class="fig-surname">${esc(cognome.join(' ') || nome)}</span><span class="fig-name">${esc(cognome.length ? nome : '')}</span></div>
-          <div class="fig-ar"><span>${esc(p.ar || '-')}</span><small>I REMBRANDT</small></div>
+          <div class="fig-names"><span class="fig-surname">${esc(surname)}</span><span class="fig-name">${esc(firstname)}</span></div>
+          <div class="fig-ar"><span>${esc(p.ar || '-')}</span><small>${dash(d.presenze)} PRESENZE</small></div>
         </div>
-        <span class="fig-lens" aria-hidden="true"></span>
+        ${rust ? `<svg class="fig-web w2" viewBox="0 0 100 100" aria-hidden="true">${FIG_WEB('<path d="M70 0 Q76 14 88 16 Q94 24 100 30"></path><path d="M40 0 Q50 20 64 30 Q76 46 100 56"></path><path d="M14 0 Q26 26 40 44 Q54 66 76 80 Q86 92 100 100"></path>')}</svg>` : ''}
+        <span class="fig-sheen" aria-hidden="true"></span>
+        ${top ? `<div class="fig-flames" aria-hidden="true"><span class="f1"></span><span class="f2"></span><span class="f3"></span></div>` : ''}
         <span class="fig-flash" aria-hidden="true"></span>
       </div>
 
       <div class="fig-face fig-back">
-        <span class="fig-back-lines" aria-hidden="true"></span>
-        <span class="fig-back-frame" aria-hidden="true"></span>
         <div class="fb-head">
-          <div class="fb-id">
-            <small>CARTA GIOCATORE</small>
-            <span class="fb-surname">${esc(cognome.join(' ') || nome)}</span>
-            <span class="fb-name">${esc(cognome.length ? nome : '')}</span>
-          </div>
-          ${p.pos ? `<span class="fb-num">#${p.pos}</span>` : ''}
+          <div class="fb-id"><span class="fb-surname">${esc(surname)}</span><span class="fb-name">${esc(firstname)}</span></div>
+          ${chip ? `<span class="fb-rar">${chip}</span>` : ''}
         </div>
-        <div class="fb-main">
-          <div class="fb-gauge" style="--deg:${deg.toFixed(1)}deg"><div><span>${arShort}</span><small>A.R. %</small></div></div>
-          <div class="fb-stats">
-            <div><span>${dash(d.presenze)}</span><small>PRESENZE</small></div>
-            <div><span>${dash(d.assenze)}</span><small>ASSENZE</small></div>
-            <div><span>${dash(d.lavoro)}</span><small>LAVORO</small></div>
-            <div><span>${dash(d.bonusAcc)} / ${dash(d.bonusRes)}</span><small>BONUS</small></div>
-          </div>
+        <div class="fb-three">
+          <div><b>${dash(d.presenze)}</b><small>PRESENZE</small></div>
+          <div><b>${dash(d.assenze)}</b><small>ASSENZE</small></div>
+          <div><b>${dash(d.lavoro)}</b><small>LAVORO</small></div>
         </div>
-        ${spark ? `<div class="fb-spark">
-          <div class="fb-spark-head"><small>ANDAMENTO 2026</small><span>miglior posizione <b>${s.best}°</b></span></div>
-          ${spark}
-        </div>` : ''}
-        ${barCount ? `<div class="fb-streak">
-          <div class="fb-streak-head"><small>STREAK</small><span>${dash(d.streakNow)} / MAX ${d.streakMax}</span></div>
-          <div class="fb-bars" style="grid-template-columns: repeat(${barCount}, minmax(0, 1fr))">${bars}</div>
-        </div>` : ''}
-        <div class="fb-foot">
-          <span>${p.pos ? `Figurina n. ${p.pos} di ${data.players.length}` : 'Mercoledì x la Vita'}</span>
+        <div>
+          <div class="fb-row"><span class="fb-lbl">STREAK</span><span><b>${dash(d.streakNow)}</b> di fila · record ${dash(d.streakMax)}</span></div>
+          ${nBars ? `<div class="fb-bars">${bars}</div>` : ''}
         </div>
-        <span class="fig-lens" aria-hidden="true"></span>
+        <div class="fb-row"><span class="fb-lbl">BONUS RESIDUI</span><b>${dash(d.bonusRes)}</b></div>
+        ${spark}
+        <span class="fig-sheen" aria-hidden="true"></span>
         <span class="fig-flash" aria-hidden="true"></span>
       </div>
 
@@ -869,19 +896,7 @@ function renderProfilo(data, key) {
     ${backLink('#classifica', 'Classifica')}
     <h1 class="sr-only">${esc(name)}</h1>
 
-    ${figurinaHTML(p, d, data, s)}
-
-    <section class="stat-grid four">
-      <div class="card stat"><span class="stat-num">${dash(d.presenze)}</span><span class="label">Presenze</span></div>
-      <div class="card stat"><span class="stat-num">${dash(d.assenze)}</span><span class="label">Assenze</span></div>
-      <div class="card stat"><span class="stat-num">${dash(d.lavoro)}</span><span class="label">Lavoro</span></div>
-      <div class="card stat"><span class="stat-num">${dash(d.sospesi)}</span><span class="label">Sospesi</span></div>
-    </section>
-
-    <section class="card duo-card">
-      <div class="who"><span class="label caps">Streak</span><span class="small">Attuale ${dash(d.streakNow)} · migliore ${dash(d.streakMax)}</span></div>
-      <div class="who right"><span class="label caps">Bonus</span><span class="small">${dash(d.bonusAcc)} accumulati · ${dash(d.bonusRes)} residui</span></div>
-    </section>
+    ${figurinaHTML(p, d, data)}
 
     ${data.history.length > 1 && s.best ? `<section class="card chart-card">
       <div class="ar-top"><span class="label caps">Posizione nel tempo</span><span class="label">Migliore: ${s.best}°</span></div>

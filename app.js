@@ -913,32 +913,47 @@ function renderProfilo(data, key) {
 // =====================================================================
 
 let anthem = null;
-let anthemErr = false;
+let anthemErr = '';
+let anthemBlob = null;
+let anthemLoading = null;
 const ANTHEM_SRC = 'audio/mercoledi-anthem.mp3?v=2';
 const fmtTime = (s) => (isFinite(s) ? `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}` : '-:--');
+
+// Scarica la canzone intera in memoria: su iPhone, dall'app sulla home,
+// l'audio letto direttamente dal sito a volte non parte.
+function preloadAnthem() {
+  if (anthemBlob || anthemLoading) return anthemLoading;
+  anthemLoading = fetch(ANTHEM_SRC)
+    .then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.blob(); })
+    .then((blob) => {
+      anthemBlob = URL.createObjectURL(blob.type ? blob : new Blob([blob], { type: 'audio/mpeg' }));
+      if (anthem && anthem.paused && !anthem.currentTime) anthem.src = anthemBlob;
+      syncAnthem();
+    })
+    .catch(() => { anthemLoading = null; });
+  return anthemLoading;
+}
 
 function anthemAudio() {
   if (anthem) return anthem;
   anthem = new Audio();
   anthem.preload = 'auto';
   anthem.setAttribute('playsinline', '');
-  anthem.src = ANTHEM_SRC;
+  anthem.src = anthemBlob || ANTHEM_SRC;
   ['play', 'playing', 'pause', 'ended', 'timeupdate', 'loadedmetadata', 'waiting'].forEach((ev) => anthem.addEventListener(ev, syncAnthem));
-  anthem.addEventListener('error', () => { anthemErr = true; syncAnthem(); });
+  anthem.addEventListener('error', () => {
+    const e = anthem.error;
+    anthemErr = 'Errore audio ' + (e ? e.code : '?');
+    syncAnthem();
+  });
   return anthem;
 }
 
 function playAnthem() {
   const a = anthemAudio();
-  anthemErr = false;
+  anthemErr = '';
   const p = a.play();
-  if (p && p.catch) {
-    p.catch(() => {
-      // Secondo tentativo ricaricando il file, poi messaggio di errore.
-      a.load();
-      a.play().catch(() => { anthemErr = true; syncAnthem(); });
-    });
-  }
+  if (p && p.catch) p.catch((e) => { anthemErr = (e && e.name) || 'Non parte'; syncAnthem(); });
   syncAnthem();
 }
 
@@ -957,8 +972,8 @@ function syncAnthem() {
   if (dur) { seek.max = dur; seek.disabled = false; }
   if (!seek._drag) seek.value = t;
   seek.style.setProperty('--p', dur ? `${(t / dur) * 100}%` : '0%');
-  box.querySelector('.anthem-time').textContent = anthemErr ? 'Non parte, riprova' : (playing || t ? fmtTime(t) : fmtTime(dur || 158));
-  box.classList.toggle('err', anthemErr);
+  box.querySelector('.anthem-time').textContent = anthemErr ? anthemErr : (playing || t ? fmtTime(t) : fmtTime(dur || 158));
+  box.classList.toggle('err', !!anthemErr);
 }
 
 function anthemHTML() {
@@ -986,6 +1001,7 @@ function setupAnthem() {
     seek._drag = false;
     if (anthem) anthem.currentTime = Number(seek.value);
   });
+  preloadAnthem();
   syncAnthem();
 }
 

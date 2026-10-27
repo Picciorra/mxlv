@@ -893,6 +893,9 @@ function renderProfilo(data, key) {
   };
   const s = rankSummary(data.history, name);
   const dash = (v) => (v === null || v === undefined ? '-' : v);
+  const idx = nextIndex(data.nights);
+  const calls = data.nights.slice(0, idx).filter((n) => n.caller === name && (n.activity || n.recorded || n.cancelled)).reverse();
+  const nextCall = data.nights.slice(idx).find((n) => n.caller === name);
 
   $content.innerHTML = `
     ${backLink('#classifica', 'Classifica')}
@@ -900,10 +903,28 @@ function renderProfilo(data, key) {
 
     ${figurinaHTML(p, d, data)}
 
+    <section class="stat-grid four" aria-label="Numeri principali">
+      <div class="card stat"><span class="stat-num">${dash(d.presenze)}</span><span class="label">Presenze</span></div>
+      <div class="card stat"><span class="stat-num">${dash(d.assenze)}</span><span class="label">Assenze</span></div>
+      <div class="card stat"><span class="stat-num">${dash(d.lavoro)}</span><span class="label">Lavoro</span></div>
+      <div class="card stat"><span class="stat-num">${dash(d.sospesi)}</span><span class="label">Sospesi</span></div>
+    </section>
+
+    <section class="card duo-card">
+      <div class="who"><span class="label caps">Streak</span><span class="small">Attuale ${dash(d.streakNow)} · record ${dash(d.streakMax)}</span></div>
+      <div class="who right"><span class="label caps">Bonus</span><span class="small">${dash(d.bonusAcc)} accumulati · ${dash(d.bonusRes)} residui</span></div>
+    </section>
+
     ${data.history.length > 1 && s.best ? `<section class="card chart-card">
       <div class="ar-top"><span class="label caps">Posizione nel tempo</span><span class="label">Migliore: ${s.best}°</span></div>
       ${rankChart(data.history, data.players.map((pl) => pl.name), name, { height: 140, compact: true })}
-    </section>` : ''}`;
+    </section>` : ''}
+
+    <section class="section">
+      <div class="section-head"><h2 class="section-title">Le sue chiamate</h2><span class="label">${calls.length ? `${calls.length} ${calls.length === 1 ? 'serata' : 'serate'}` : ''}</span></div>
+      ${calls.length ? `<div class="night-list">${calls.map(nightCard).join('')}</div>` : '<div class="note">Non ha ancora chiamato nessuna serata.</div>'}
+      ${nextCall ? `<p class="muted small">Prossimo turno: ${nextCall.d} ${MONTHS[nextCall.mo - 1]}</p>` : ''}
+    </section>`;
 
   figurinaCleanup = setupFigurina();
 }

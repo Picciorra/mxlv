@@ -40,7 +40,7 @@ jobs:
       - name: Prepara il sito
         run: |
           mkdir _site
-          cp -r index.html app.js config.js styles.css sw.js manifest.webmanifest robots.txt img fonts _site/
+          cp -r index.html app.js config.js styles.css sw.js manifest.webmanifest robots.txt img fonts audio _site/
       - uses: actions/upload-pages-artifact@v3
       - id: deployment
         uses: actions/deploy-pages@v4

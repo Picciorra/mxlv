@@ -238,8 +238,8 @@ const icons = {
   pin: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s7-6.5 7-12a7 7 0 0 0-14 0c0 5.5 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>',
   chevronLeft: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>',
   chevronRight: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>',
-  play: '<svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>',
-  pause: '<svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4.5" height="14" rx="1.2"/><rect x="13.5" y="5" width="4.5" height="14" rx="1.2"/></svg>',
+  play: '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>',
+  pause: '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4.5" height="14" rx="1.2"/><rect x="13.5" y="5" width="4.5" height="14" rx="1.2"/></svg>',
   chevronDown: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>',
   userPlus: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M19 8v6M16 11h6"/></svg>',
   pencil: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>',
@@ -913,42 +913,60 @@ function renderProfilo(data, key) {
 // =====================================================================
 
 let anthem = null;
+let anthemErr = false;
+const ANTHEM_SRC = 'audio/mercoledi-anthem.mp3?v=2';
 const fmtTime = (s) => (isFinite(s) ? `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}` : '-:--');
 
 function anthemAudio() {
   if (anthem) return anthem;
-  anthem = new Audio('audio/mercoledi-anthem.mp3');
-  anthem.preload = 'metadata';
-  ['play', 'pause', 'ended', 'timeupdate', 'loadedmetadata'].forEach((ev) => anthem.addEventListener(ev, syncAnthem));
+  anthem = new Audio();
+  anthem.preload = 'auto';
+  anthem.setAttribute('playsinline', '');
+  anthem.src = ANTHEM_SRC;
+  ['play', 'playing', 'pause', 'ended', 'timeupdate', 'loadedmetadata', 'waiting'].forEach((ev) => anthem.addEventListener(ev, syncAnthem));
+  anthem.addEventListener('error', () => { anthemErr = true; syncAnthem(); });
   return anthem;
+}
+
+function playAnthem() {
+  const a = anthemAudio();
+  anthemErr = false;
+  const p = a.play();
+  if (p && p.catch) {
+    p.catch(() => {
+      // Secondo tentativo ricaricando il file, poi messaggio di errore.
+      a.load();
+      a.play().catch(() => { anthemErr = true; syncAnthem(); });
+    });
+  }
+  syncAnthem();
 }
 
 function syncAnthem() {
   const box = document.getElementById('anthem');
-  if (!box || !anthem) return;
-  const playing = !anthem.paused && !anthem.ended;
-  const dur = anthem.duration || 0;
+  if (!box) return;
+  const a = anthem;
+  const playing = !!a && !a.paused && !a.ended;
+  const dur = a && isFinite(a.duration) && a.duration > 0 ? a.duration : 0;
+  const t = a ? a.currentTime : 0;
   box.classList.toggle('playing', playing);
   const btn = box.querySelector('.anthem-btn');
   btn.innerHTML = playing ? icons.pause : icons.play;
   btn.setAttribute('aria-label', playing ? 'Metti in pausa' : 'Fai partire il Mercoledì Anthem');
   const seek = box.querySelector('.anthem-seek');
   if (dur) { seek.max = dur; seek.disabled = false; }
-  if (!seek._drag) seek.value = anthem.currentTime;
-  seek.style.setProperty('--p', dur ? `${(anthem.currentTime / dur) * 100}%` : '0%');
-  box.querySelector('.anthem-time').textContent = `${fmtTime(anthem.currentTime)} / ${fmtTime(dur || 159)}`;
+  if (!seek._drag) seek.value = t;
+  seek.style.setProperty('--p', dur ? `${(t / dur) * 100}%` : '0%');
+  box.querySelector('.anthem-time').textContent = anthemErr ? 'Non parte, riprova' : (playing || t ? fmtTime(t) : fmtTime(dur || 158));
+  box.classList.toggle('err', anthemErr);
 }
 
 function anthemHTML() {
-  return `<section class="card anthem" id="anthem" aria-label="Mercoledì Anthem">
+  return `<section class="anthem" id="anthem" aria-label="Mercoledì Anthem">
     <button type="button" class="anthem-btn" aria-label="Fai partire il Mercoledì Anthem">${icons.play}</button>
     <div class="anthem-main">
-      <div class="anthem-head">
-        <div class="anthem-title"><span class="label caps">Mercoledì Anthem</span><b>Il Mercoledì degli Amici</b></div>
-        <span class="anthem-eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-      </div>
-      <input type="range" class="anthem-seek" min="0" max="159" step="0.1" value="0" disabled aria-label="Posizione nella canzone">
-      <span class="anthem-time">0:00 / 2:39</span>
+      <div class="anthem-head"><span class="anthem-title">Mercoledì Anthem</span><span class="anthem-time">2:38</span></div>
+      <input type="range" class="anthem-seek" min="0" max="158" step="0.1" value="0" disabled aria-label="Posizione nella canzone">
     </div>
   </section>`;
 }
@@ -957,8 +975,7 @@ function setupAnthem() {
   const box = document.getElementById('anthem');
   if (!box) return;
   box.querySelector('.anthem-btn').addEventListener('click', () => {
-    const a = anthemAudio();
-    if (a.paused || a.ended) a.play().catch(() => {}); else a.pause();
+    if (!anthem || anthem.paused || anthem.ended) playAnthem(); else anthem.pause();
   });
   const seek = box.querySelector('.anthem-seek');
   seek.addEventListener('input', () => {
@@ -969,7 +986,7 @@ function setupAnthem() {
     seek._drag = false;
     if (anthem) anthem.currentTime = Number(seek.value);
   });
-  if (anthem) { anthem.preload = 'metadata'; syncAnthem(); }
+  syncAnthem();
 }
 
 // =====================================================================
@@ -1186,5 +1203,5 @@ render();
 refresh();
 
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
-  navigator.serviceWorker.register('sw.js').catch(() => {});
+  navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then((r) => r.update()).catch(() => {});
 }

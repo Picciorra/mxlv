@@ -1,7 +1,7 @@
 // Service worker minimo: serve per l'installazione sulla home.
 // Prima prova la rete, se non c'e' usa la copia salvata dei file dell'app.
 // I dati del foglio non passano da qui: li gestisce app.js.
-const CACHE = 'mxlv-shell-v6';
+const CACHE = 'mxlv-shell-v7';
 
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));

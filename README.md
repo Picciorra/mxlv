@@ -1,6 +1,6 @@
 # MXLV - Mercoledì x la Vita
 
-Webapp in sola lettura del gioco del mercoledì. Schermate: Prossimo mercoledì, Classifica, Storico (classifica nel tempo e serate), dettaglio serata, Profilo e Regolamento.
+Webapp in sola lettura del gioco del mercoledì. Schermate: Prossimo mercoledì, Classifica (oggi e nel tempo), Calendario (prossimi turni e serate fatte), dettaglio serata, Profilo con figurina e Regolamento.
 
 I dati vengono letti da un Google Sheet pubblicato sul web: tutti i calcoli li fa il foglio,
 l'app li mostra. Il riferimento al foglio non è nel repo: la pubblicazione lo prende

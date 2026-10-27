@@ -531,12 +531,6 @@ p.center { margin: -8px 0 0; }
 .fb-bars span { height: 8px; border-radius: 2px; background: rgba(207, 232, 138, 0.18); }
 .fb-bars span.on { background: var(--accent); }
 .fb-foot { position: absolute; left: 20px; right: 20px; bottom: 16px; display: flex; justify-content: space-between; align-items: center; font-size: 10px; font-style: italic; color: rgba(251, 247, 236, 0.6); }
-.fb-seal {
-  font-style: normal; padding: 4px 8px; border-radius: 6px;
-  font-family: var(--display); font-weight: 800; font-size: 11px; letter-spacing: 0.12em;
-  color: #FFFFFF; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
-  background: linear-gradient(calc(100deg + var(--ga)), var(--prizm)); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-}
 
 /* Effetto lente: riflesso iridescente quando si inclina e lampo quando si gira */
 .fig-lens {
@@ -577,3 +571,23 @@ p.center { margin: -8px 0 0; }
   font-weight: 700; font-size: 15px; text-decoration: none;
 }
 .live-cta:active { opacity: 0.85; }
+
+/* Calendario */
+.section-head { display: flex; justify-content: space-between; align-items: center; }
+.see-all { display: inline-flex; align-items: center; gap: 2px; min-height: 44px; color: var(--accent); font-size: 14px; font-weight: 600; text-decoration: none; }
+.see-all svg { width: 16px; height: 16px; }
+.cal-turn { padding: 8px 14px; }
+.cal-turn .night-date { width: 40px; }
+.cal-turn .turn-name { flex-grow: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.turn-tags { display: inline-flex; gap: 6px; flex-shrink: 0; }
+.turn-tags .tag { display: inline-flex; align-items: center; gap: 4px; }
+.turn-tags .tag svg { width: 12px; height: 12px; }
+.tag.swap { background: #1E2A3A; color: #8FB8FF; }
+.cal-turn.mine { box-shadow: inset 0 0 0 1.5px var(--accent); }
+.cal-turn.dim { opacity: 0.35; }
+.pick.off img, .pick.off .initials { opacity: 0.35; }
+.cal-summary { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--accent); }
+.cal-summary img, .cal-summary .initials { width: 44px; height: 44px; border-radius: 999px; object-fit: cover; flex-shrink: 0; }
+.cal-summary .who { flex-grow: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cal-summary .caller-name { font-size: 17px; }
+.cal-clear { width: 44px; height: 44px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 999px; background: var(--surface-2); color: var(--muted); cursor: pointer; }

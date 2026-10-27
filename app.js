@@ -13,7 +13,7 @@ const GID = {
   registro: CONFIG.gidRegistro || ''
 };
 const REGISTRO_URL = `https://docs.google.com/spreadsheets/d/e/${SHEET_ID}/pubhtml?gid=${GID.registro}&single=true`;
-const CACHE_KEY = 'mxlv-data-v3';
+const CACHE_KEY = 'mxlv-data-v4';
 const START_HOUR = 20; // le attività iniziano dalle 20:00
 const END_HOUR = 1;    // e finiscono entro l'1:00 del giovedì
 
@@ -137,6 +137,7 @@ function readRegistro(rows) {
         activity: norm(r[col.activity]),
         caller: cleanName(rawCaller),
         dinner: rawCaller.includes('🍴'),
+        swap: /[\u2B06\u2B07\u{1F500}]/u.test(rawCaller),
         mrx: col.mrx >= 0 ? norm(r[col.mrx]) : '',
         marks,
         present: vals.filter((v) => PRESENT.has(v)).length,
@@ -241,6 +242,7 @@ const icons = {
   userPlus: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M19 8v6M16 11h6"/></svg>',
   pencil: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>',
   plus: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
+  close: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
   external: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17L17 7M8 7h9v9"/></svg>'
 };
 
@@ -329,7 +331,7 @@ function renderMercoledi(data) {
     </section>` : ''}
 
     ${upcoming.length ? `<section class="section">
-      <h2 class="section-title">Prossimi turni</h2>
+      <div class="section-head"><h2 class="section-title">Prossimi turni</h2><a class="see-all" href="#calendario" data-cal="next">Vedi tutti ${icons.chevronRight}</a></div>
       ${upcoming.map((n) => `<div class="card turn">
         <span class="turn-date">${pad(n.d)} ${MON3[n.mo - 1]}</span>
         ${avatar(n.caller)}
@@ -375,7 +377,7 @@ function renderSerata(data, key) {
   const i = nights.findIndex((n) => n.key === key);
   const n = nights[i];
   if (!n || i >= nextIndex(nights)) {
-    $content.innerHTML = `${backLink('#storico', 'Storico')}<div class="note">Serata non trovata.</div>`;
+    $content.innerHTML = `${backLink('#calendario', 'Calendario')}<div class="note">Serata non trovata.</div>`;
     return;
   }
   const { title, place } = splitActivity(n.activity || (n.cancelled ? 'Annullata' : 'Serata'));
@@ -383,7 +385,7 @@ function renderSerata(data, key) {
   const total = people.filter((p) => p.mark).length;
 
   $content.innerHTML = `
-    ${backLink('#storico', 'Indietro')}
+    ${backLink('#calendario', 'Indietro')}
     <section class="night-head">
       <span class="hero-date">MERCOLEDÌ ${n.d} ${MONTHS[n.mo - 1].toUpperCase()} · N. ${i + 1}</span>
       <h1 class="night-h1">${esc(title)}</h1>
@@ -448,39 +450,76 @@ function podiumItem(p, cls) {
   </a>`;
 }
 
+const clsState = { view: 'now', sel: null };
+
 function renderClassifica(data) {
   const ps = data.players;
   const h = data.history;
   const last = h[h.length - 1], prev = h[h.length - 2];
+  const isNow = clsState.view === 'now';
   const subtitle = last
-    ? `Aggiornata al ${last.date}` + (prev ? ` · frecce rispetto al ${prev.date}` : '')
+    ? `Aggiornata al ${last.date}` + (isNow && prev ? ` · frecce rispetto al ${prev.date}` : '')
     : 'Ordinata per Attendance Rate';
 
-  const rows = ps.slice(3).map((p) => {
-    const presenze = num(stat(data, p.name, 'Presenze')) ?? num(p.present);
-    return `
-    <a class="row" href="#profilo/${slug(p.name)}">
-      <div class="col-pos"><span class="pos">${p.pos}</span>${delta(p)}</div>
-      <div class="col-name">${avatar(p.name)}<div class="who"><span class="name">${esc(p.name)}</span>${presenze !== null ? `<span class="sub">${presenze} ${presenze === 1 ? 'presenza' : 'presenze'}</span>` : ''}</div></div>
-      <span class="col-ar">${esc(p.ar)}</span>
-    </a>`;
-  }).join('');
+  let body;
+  if (isNow) {
+    const rows = ps.slice(3).map((p) => {
+      const presenze = num(stat(data, p.name, 'Presenze')) ?? num(p.present);
+      return `
+      <a class="row" href="#profilo/${slug(p.name)}">
+        <div class="col-pos"><span class="pos">${p.pos}</span>${delta(p)}</div>
+        <div class="col-name">${avatar(p.name)}<div class="who"><span class="name">${esc(p.name)}</span>${presenze !== null ? `<span class="sub">${presenze} ${presenze === 1 ? 'presenza' : 'presenze'}</span>` : ''}</div></div>
+        <span class="col-ar">${esc(p.ar)}</span>
+      </a>`;
+    }).join('');
+    body = `
+      <section class="podium" aria-label="Podio">
+        ${podiumItem(ps[1], 'second')}
+        ${podiumItem(ps[0], 'first')}
+        ${podiumItem(ps[2], 'third')}
+      </section>
+      <section class="list" aria-label="Resto della classifica">
+        <div class="list-head" aria-hidden="true">
+          <span class="col-pos">POS</span>
+          <span class="col-name">GIOCATORE</span>
+          <span class="col-ar">A.R.</span>
+        </div>
+        ${rows}
+      </section>`;
+  } else {
+    const names = ps.map((p) => p.name);
+    if (!clsState.sel || !names.includes(clsState.sel)) clsState.sel = names[0];
+    const sel = clsState.sel;
+    const s = rankSummary(h, sel);
+    body = `
+      <div class="player-picker" role="group" aria-label="Scegli chi evidenziare">
+        ${data.roster.filter((n) => names.includes(n)).map((n) => `
+          <button type="button" class="pick${n === sel ? ' on' : ''}" data-pick="${esc(n)}" aria-pressed="${n === sel}">
+            ${avatar(n)}<span>${esc(firstName(n))}</span>
+          </button>`).join('')}
+      </div>
+      <section class="card chart-card">${rankChart(h, names, sel)}</section>
+      <section class="stat-grid three">
+        <div class="card stat"><span class="stat-num hi">${s.now ?? '-'}${s.now ? '°' : ''}</span><span class="label">Oggi</span></div>
+        <div class="card stat"><span class="stat-num">${s.best ?? '-'}${s.best ? '°' : ''}</span><span class="label">Miglior posizione</span></div>
+        <div class="card stat"><span class="stat-num">${s.top}</span><span class="label">Settimane in testa</span></div>
+      </section>`;
+  }
 
   $content.innerHTML = `
     <div class="title-block"><h1>Classifica</h1><p class="muted">${esc(subtitle)}</p></div>
-    <section class="podium" aria-label="Podio">
-      ${podiumItem(ps[1], 'second')}
-      ${podiumItem(ps[0], 'first')}
-      ${podiumItem(ps[2], 'third')}
-    </section>
-    <section class="list" aria-label="Resto della classifica">
-      <div class="list-head" aria-hidden="true">
-        <span class="col-pos">POS</span>
-        <span class="col-name">GIOCATORE</span>
-        <span class="col-ar">A.R.</span>
-      </div>
-      ${rows}
-    </section>`;
+    <div class="segmented" role="tablist" aria-label="Vista classifica">
+      <button type="button" role="tab" data-seg="now" aria-selected="${isNow}" class="${isNow ? 'on' : ''}">Oggi</button>
+      <button type="button" role="tab" data-seg="time" aria-selected="${!isNow}" class="${!isNow ? 'on' : ''}">Nel tempo</button>
+    </div>
+    ${body}`;
+
+  $content.querySelectorAll('[data-seg]').forEach((b) => b.addEventListener('click', () => {
+    clsState.view = b.dataset.seg; render();
+  }));
+  $content.querySelectorAll('[data-pick]').forEach((b) => b.addEventListener('click', () => {
+    clsState.sel = b.dataset.pick; render();
+  }));
 }
 
 // =====================================================================
@@ -533,50 +572,91 @@ function rankSummary(history, name) {
 }
 
 // =====================================================================
-// Vista: Storico
+// Vista: Calendario (prossimi turni e serate fatte)
 // =====================================================================
 
-const storicoState = { view: 'rank', sel: null };
+const calState = { view: 'next', sel: null };
 
-function renderStorico(data) {
-  const names = data.players.map((p) => p.name);
-  if (!storicoState.sel || !names.includes(storicoState.sel)) storicoState.sel = names[0];
-  const sel = storicoState.sel;
-  const isRank = storicoState.view === 'rank';
-  const past = data.nights.slice(0, nextIndex(data.nights)).filter((n) => n.activity || n.recorded).reverse();
-  const s = rankSummary(data.history, sel);
+function turnRow(n, sel) {
+  const mine = sel && n.caller === sel;
+  const dim = sel && !mine;
+  return `<div class="card turn cal-turn${mine ? ' mine' : ''}${dim ? ' dim' : ''}">
+    <div class="night-date"><span class="nd-day">${n.d}</span><span class="nd-mon">${MON3[n.mo - 1]}</span></div>
+    ${avatar(n.caller)}
+    <span class="turn-name">${esc(n.caller || 'Da definire')}</span>
+    <span class="turn-tags">
+      ${n.dinner ? `<span class="tag dinner">${icons.fork}CENA</span>` : ''}
+      ${n.swap ? '<span class="tag swap">SCAMBIO</span>' : ''}
+    </span>
+  </div>`;
+}
 
-  const rankView = `
-    <div class="player-picker" role="group" aria-label="Scegli chi evidenziare">
-      ${data.roster.filter((n) => names.includes(n)).map((n) => `
-        <button type="button" class="pick${n === sel ? ' on' : ''}" data-pick="${esc(n)}" aria-pressed="${n === sel}">
-          ${avatar(n)}<span>${esc(firstName(n))}</span>
-        </button>`).join('')}
-    </div>
-    <section class="card chart-card">${rankChart(data.history, names, sel)}</section>
-    <section class="stat-grid three">
-      <div class="card stat"><span class="stat-num hi">${s.now ?? '-'}${s.now ? '°' : ''}</span><span class="label">Oggi</span></div>
-      <div class="card stat"><span class="stat-num">${s.best ?? '-'}${s.best ? '°' : ''}</span><span class="label">Miglior posizione</span></div>
-      <div class="card stat"><span class="stat-num">${s.top}</span><span class="label">Settimane in testa</span></div>
-    </section>`;
+function renderCalendario(data) {
+  const idx = nextIndex(data.nights);
+  const future = data.nights.slice(idx);
+  const past = data.nights.slice(0, idx).filter((n) => n.activity || n.recorded).reverse();
+  const callers = data.roster.filter((n) => future.some((f) => f.caller === n));
+  if (calState.sel && !callers.includes(calState.sel)) calState.sel = null;
+  const sel = calState.sel;
+  const isNext = calState.view === 'next';
 
-  const nightsView = past.length
+  let nextView;
+  if (!future.length) {
+    nextView = '<div class="note">Nessun altro mercoledì in calendario per questa stagione.</div>';
+  } else {
+    const months = [];
+    future.forEach((n) => {
+      const key = `${n.y}-${n.mo}`;
+      let m = months[months.length - 1];
+      if (!m || m.key !== key) { m = { key, label: `${MONTHS[n.mo - 1]} ${n.y}`, items: [] }; months.push(m); }
+      m.items.push(n);
+    });
+    let summary = '';
+    if (sel) {
+      const turns = future.filter((n) => n.caller === sel);
+      const first = turns[0];
+      summary = `<div class="cal-summary">
+        ${avatar(sel)}
+        <div class="who">
+          <span class="caller-name">${esc(sel)}</span>
+          <span class="small muted">${first ? `Prossimo turno ${first.d} ${MONTHS[first.mo - 1]} · ${turns.length === 1 ? 'ne resta 1' : `ne restano ${turns.length}`}` : 'Nessun turno rimasto'}</span>
+        </div>
+        <button type="button" class="cal-clear" data-pick="" aria-label="Mostra tutti">${icons.close}</button>
+      </div>`;
+    }
+    nextView = `
+      <div class="player-picker" role="group" aria-label="Filtra per chi chiama">
+        ${callers.map((n) => `
+          <button type="button" class="pick${n === sel ? ' on' : ''}${sel && n !== sel ? ' off' : ''}" data-pick="${esc(n)}" aria-pressed="${n === sel}">
+            ${avatar(n)}<span>${esc(firstName(n))}</span>
+          </button>`).join('')}
+      </div>
+      ${summary}
+      ${months.map((m) => `<section class="section">
+        <h2 class="section-title">${esc(m.label)}</h2>
+        ${m.items.map((n) => turnRow(n, sel)).join('')}
+      </section>`).join('')}`;
+  }
+
+  const pastView = past.length
     ? `<div class="night-list">${past.map(nightCard).join('')}</div>`
     : '<div class="note">Nessuna serata ancora.</div>';
 
   $content.innerHTML = `
-    <div class="title-block"><h1>Storico</h1><p class="muted">${past.length} serate giocate</p></div>
-    <div class="segmented" role="tablist" aria-label="Vista storico">
-      <button type="button" role="tab" data-seg="rank" aria-selected="${isRank}" class="${isRank ? 'on' : ''}">Classifica nel tempo</button>
-      <button type="button" role="tab" data-seg="nights" aria-selected="${!isRank}" class="${!isRank ? 'on' : ''}">Serate</button>
+    <div class="title-block"><h1>Calendario</h1><p class="muted">${future.length} mercoledì in arrivo · ${past.length} serate fatte</p></div>
+    <div class="segmented" role="tablist" aria-label="Vista calendario">
+      <button type="button" role="tab" data-seg="next" aria-selected="${isNext}" class="${isNext ? 'on' : ''}">Prossimi turni</button>
+      <button type="button" role="tab" data-seg="past" aria-selected="${!isNext}" class="${!isNext ? 'on' : ''}">Serate fatte</button>
     </div>
-    ${isRank ? rankView : nightsView}`;
+    ${isNext ? nextView : pastView}`;
 
   $content.querySelectorAll('[data-seg]').forEach((b) => b.addEventListener('click', () => {
-    storicoState.view = b.dataset.seg; render();
+    calState.view = b.dataset.seg; render();
   }));
   $content.querySelectorAll('[data-pick]').forEach((b) => b.addEventListener('click', () => {
-    storicoState.sel = b.dataset.pick; render();
+    const v = b.dataset.pick;
+    calState.sel = !v || calState.sel === v ? null : v;
+    render();
   }));
 }
 
@@ -661,7 +741,6 @@ function figurinaHTML(p, d, data, s) {
         </div>` : ''}
         <div class="fb-foot">
           <span>${p.pos ? `Figurina n. ${p.pos} di ${data.players.length}` : 'Mercoledì x la Vita'}</span>
-          <span class="fb-seal">MXLV ORIGINALE</span>
         </div>
         <span class="fig-lens" aria-hidden="true"></span>
         <span class="fig-flash" aria-hidden="true"></span>
@@ -930,16 +1009,17 @@ function renderRegolamento() {
 const ROUTES = {
   mercoledi: { tab: 'mercoledi', view: renderMercoledi, title: 'Mercoledì' },
   classifica: { tab: 'classifica', view: renderClassifica, title: 'Classifica' },
-  storico: { tab: 'storico', view: renderStorico, title: 'Storico' },
+  calendario: { tab: 'calendario', view: renderCalendario, title: 'Calendario' },
   regolamento: { tab: 'regolamento', view: renderRegolamento, title: 'Regolamento', static: true },
   profilo: { tab: 'classifica', view: renderProfilo, title: 'Profilo' },
-  serata: { tab: 'storico', view: renderSerata, title: 'Serata' }
+  serata: { tab: 'calendario', view: renderSerata, title: 'Serata' }
 };
 let state = { data: null, stale: false, error: null };
 let inAppNavs = 0;
 
 function currentRoute() {
-  const [name, arg] = location.hash.slice(1).split('/');
+  let [name, arg] = location.hash.slice(1).split('/');
+  if (name === 'storico') { name = 'calendario'; calState.view = 'past'; }
   return ROUTES[name] ? { name, arg: decodeURIComponent(arg || ''), ...ROUTES[name] } : { name: 'mercoledi', arg: '', ...ROUTES.mercoledi };
 }
 
@@ -1004,6 +1084,8 @@ async function refresh() {
 // "Indietro" torna alla schermata precedente se si e' arrivati da dentro l'app,
 // altrimenti va alla scheda di riferimento.
 document.addEventListener('click', (e) => {
+  const cal = e.target.closest('a[data-cal]');
+  if (cal) calState.view = cal.dataset.cal;
   const a = e.target.closest('a[data-back]');
   if (a && inAppNavs > 0) { e.preventDefault(); history.back(); }
 });

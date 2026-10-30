@@ -477,6 +477,10 @@ p.center { margin: -8px 0 0; }
   box-shadow: 0 34px 48px -18px rgba(0, 0, 0, 0.9);
 }
 .fig-abs { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+/* La faccia nascosta sparisce davvero a metà giro: su iPhone gli effetti animati
+   (saette, fiamme) a volte ignorano il retro nascosto e si vedono attraverso. */
+.fig-front, .fig-back { transition: visibility 0s linear .1s; }
+.fig.flipped .fig-front, .fig:not(.flipped) .fig-back { visibility: hidden; }
 
 /* Materiali */
 .fig.m-oro {

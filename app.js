@@ -1241,7 +1241,17 @@ document.addEventListener('click', (e) => {
   if (a && inAppNavs > 0) { e.preventDefault(); history.back(); }
 });
 
-window.addEventListener('hashchange', () => { inAppNavs++; render(); window.scrollTo(0, 0); });
+// Su iPhone, passando da una lista lunga a una pagina corta, Safari a volte
+// ignora il ritorno in cima e lascia la pagina spostata: lo ripetiamo.
+if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+const toTop = () => { window.scrollTo(0, 0); document.documentElement.scrollTop = 0; document.body.scrollTop = 0; };
+window.addEventListener('hashchange', () => {
+  inAppNavs++;
+  toTop();
+  render();
+  toTop();
+  requestAnimationFrame(() => { toTop(); setTimeout(toTop, 60); });
+});
 $refresh.addEventListener('click', refresh);
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') refresh();

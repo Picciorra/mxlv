@@ -903,8 +903,12 @@ function renderProfilo(data, key) {
   const s = rankSummary(data.history, name);
   const dash = (v) => (v === null || v === undefined ? '-' : v);
   const idx = nextIndex(data.nights);
-  const calls = data.nights.slice(0, idx).filter((n) => n.caller === name && (n.activity || n.recorded || n.cancelled)).reverse();
-  const nextCall = data.nights.slice(idx).find((n) => n.caller === name);
+  // Comprende anche la serata di stasera, se è già iniziata
+  const now = new Date();
+  const begun = data.nights.filter((n) => startOf(n) <= now);
+  const calls = begun.filter((n, i) => n.caller === name && (n.activity || n.recorded || n.cancelled || i >= idx)).reverse();
+  const covered = calls.filter((n) => n.insteadOf).length;
+  const nextCall = data.nights.filter((n) => startOf(n) > now).find((n) => n.caller === name);
 
   $content.innerHTML = `
     ${backLink('#classifica', 'Classifica')}
@@ -930,9 +934,9 @@ function renderProfilo(data, key) {
     </section>` : ''}
 
     <section class="section">
-      <div class="section-head"><h2 class="section-title">Le sue chiamate</h2><span class="label">${calls.length ? `${calls.length} ${calls.length === 1 ? 'serata' : 'serate'}` : ''}</span></div>
+      <div class="section-head"><h2 class="section-title">Le sue chiamate</h2><span class="label">${calls.length ? `${calls.length} ${calls.length === 1 ? 'serata' : 'serate'}${covered ? ` · ${covered} al posto di altri` : ''}` : ''}</span></div>
       ${calls.length ? `<div class="night-list">${calls.map(nightCard).join('')}</div>` : '<div class="note">Non ha ancora chiamato nessuna serata.</div>'}
-      ${nextCall ? `<p class="muted small">Prossimo turno: ${nextCall.d} ${MONTHS[nextCall.mo - 1]}</p>` : ''}
+      ${nextCall ? `<p class="muted small">Prossimo turno: ${nextCall.d} ${MONTHS[nextCall.mo - 1]}${nextCall.insteadOf ? `, al posto di ${esc(nextCall.insteadOf)}` : ''}</p>` : ''}
     </section>`;
 
   figurinaCleanup = setupFigurina();

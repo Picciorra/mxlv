@@ -1307,6 +1307,19 @@ function emojiRain() {
 
 (() => {
   let startY = null, pulled = 0;
+  const PULL = 110;
+  const hint = document.createElement('div');
+  hint.className = 'pull-hint';
+  hint.setAttribute('aria-hidden', 'true');
+  document.body.appendChild(hint);
+  const showHint = (d) => {
+    if (d <= 8) { hint.classList.remove('show', 'ready'); return; }
+    const ready = d > PULL;
+    hint.textContent = ready ? 'Lascia per aggiornare' : 'Tira per aggiornare';
+    hint.classList.add('show');
+    hint.classList.toggle('ready', ready);
+    hint.style.opacity = Math.min(1, d / 60).toFixed(2);
+  };
   window.addEventListener('touchstart', (e) => {
     if (window.scrollY > 0 || e.touches.length !== 1 || e.target.closest('.fig, input')) { startY = null; return; }
     startY = e.touches[0].clientY; pulled = 0;
@@ -1314,9 +1327,12 @@ function emojiRain() {
   window.addEventListener('touchmove', (e) => {
     if (startY === null) return;
     pulled = e.touches[0].clientY - startY;
+    showHint(window.scrollY <= 0 ? pulled : 0);
   }, { passive: true });
   window.addEventListener('touchend', () => {
-    if (startY !== null && pulled > 110 && window.scrollY <= 0 && Date.now() - rainAt > 2500) {
+    showHint(0);
+    hint.style.opacity = '';
+    if (startY !== null && pulled > PULL && window.scrollY <= 0 && Date.now() - rainAt > 2500) {
       rainAt = Date.now();
       emojiRain();
       refresh();

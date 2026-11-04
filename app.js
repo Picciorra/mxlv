@@ -116,6 +116,7 @@ function readRegistro(rows) {
     date: head.indexOf('Data'),
     activity: head.indexOf('Attività'),
     caller: head.indexOf('Chiamata'),
+    std: head.indexOf('Senza Malese'),
     mrx: head.indexOf('Mister X')
   };
   const roster = head.map((n, i) => ({ n, i })).filter(({ n }) => !NOT_PLAYERS.has(n));
@@ -128,6 +129,9 @@ function readRegistro(rows) {
     const m = norm(r[col.date]).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
     if (m) {
       const rawCaller = norm(r[col.caller]);
+      const caller = cleanName(rawCaller);
+      // Senza Malese = turno previsto, Chiamata = chi chiama davvero
+      const std = col.std >= 0 ? cleanName(norm(r[col.std])) : '';
       const marks = {};
       roster.forEach(({ n, i }) => { const v = norm(r[i]); if (v) marks[n] = v; });
       const vals = Object.values(marks);
@@ -135,7 +139,8 @@ function readRegistro(rows) {
         key: `${pad(m[1])}-${pad(m[2])}`,
         y: +m[3], mo: +m[2], d: +m[1],
         activity: norm(r[col.activity]),
-        caller: cleanName(rawCaller),
+        caller,
+        insteadOf: std && caller && std !== caller ? std : '',
         dinner: rawCaller.includes('🍴'),
         swap: /[\u2B06\u2B07\u{1F500}]/u.test(rawCaller),
         mrx: col.mrx >= 0 ? norm(r[col.mrx]) : '',
@@ -254,6 +259,11 @@ const icons = {
 
 let countdownTimer = null;
 
+// Scambio di turno: informazione secondaria, in piccolo
+function insteadHTML(n) {
+  return n.insteadOf ? `<span class="instead">al posto di ${esc(n.insteadOf)}</span>` : '';
+}
+
 function nightCard(n) {
   const title = n.cancelled ? 'Annullata' : (n.activity ? n.activity.replace(/\s*@\s*/, ' @ ') : 'Serata');
   return `<a class="card night" href="#serata/${n.key}">
@@ -261,7 +271,7 @@ function nightCard(n) {
     <div class="night-main">
       <span class="night-title${n.cancelled ? ' faded' : ''}">${esc(title)}</span>
       <div class="night-meta">
-        <span>${esc(n.caller)}</span>
+        <span>${esc(n.caller)}${n.insteadOf ? `<span class="instead"> · al posto di ${esc(n.insteadOf.split(' ').slice(1).join(' ') || n.insteadOf)}</span>` : ''}</span>
         ${n.dinner ? '<span class="tag dinner">CENA</span>' : ''}
         ${n.mrx ? '<span class="tag mrx">MISTER X</span>' : ''}
       </div>
@@ -323,7 +333,7 @@ function renderMercoledi(data) {
       ${next.caller ? `<div class="divider"></div>
       <a class="caller" href="#profilo/${slug(next.caller)}">
         ${avatar(next.caller)}
-        <div class="who"><span class="label">Chiama</span><span class="caller-name">${esc(next.caller)}</span></div>
+        <div class="who"><span class="label">Chiama</span><span class="caller-name">${esc(next.caller)}</span>${insteadHTML(next)}</div>
       </a>` : ''}
     </section>
 
@@ -337,7 +347,7 @@ function renderMercoledi(data) {
       ${upcoming.map((n) => `<div class="card turn">
         <span class="turn-date">${pad(n.d)} ${MON3[n.mo - 1]}</span>
         ${avatar(n.caller)}
-        <span class="turn-name">${esc(n.caller)}</span>
+        <span class="turn-who"><span class="turn-name">${esc(n.caller)}</span>${insteadHTML(n)}</span>
         ${n.dinner ? `<span class="turn-fork" aria-label="Cena Stirata">${icons.fork}</span>` : ''}
       </div>`).join('')}
     </section>` : ''}`;
@@ -397,7 +407,7 @@ function renderSerata(data, key) {
 
     <a class="card caller-card" href="#profilo/${slug(n.caller)}">
       ${avatar(n.caller)}
-      <div class="who"><span class="label">Ha chiamato</span><span class="caller-name">${esc(n.caller)}</span></div>
+      <div class="who"><span class="label">Ha chiamato</span><span class="caller-name">${esc(n.caller)}</span>${insteadHTML(n)}</div>
       <span class="chev">${icons.chevronRight}</span>
     </a>
 
@@ -585,10 +595,9 @@ function turnRow(n, sel) {
   return `<div class="card turn cal-turn${mine ? ' mine' : ''}${dim ? ' dim' : ''}">
     <div class="night-date"><span class="nd-day">${n.d}</span><span class="nd-mon">${MON3[n.mo - 1]}</span></div>
     ${avatar(n.caller)}
-    <span class="turn-name">${esc(n.caller || 'Da definire')}</span>
+    <span class="turn-who"><span class="turn-name">${esc(n.caller || 'Da definire')}</span>${insteadHTML(n)}</span>
     <span class="turn-tags">
       ${n.dinner ? `<span class="tag dinner">${icons.fork}CENA</span>` : ''}
-      ${n.swap ? '<span class="tag swap">SCAMBIO</span>' : ''}
     </span>
   </div>`;
 }

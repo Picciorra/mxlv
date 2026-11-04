@@ -510,7 +510,7 @@ function renderClassifica(data) {
             ${avatar(n)}<span>${esc(firstName(n))}</span>
           </button>`).join('')}
       </div>
-      <section class="card chart-card">${rankChart(h, names, sel)}</section>
+      ${rankChartCard(h, names, sel)}
       <section class="stat-grid three">
         <div class="card stat"><span class="stat-num hi">${s.now ?? '-'}${s.now ? '°' : ''}</span><span class="label">Oggi</span></div>
         <div class="card stat"><span class="stat-num">${s.best ?? '-'}${s.best ? '°' : ''}</span><span class="label">Miglior posizione</span></div>
@@ -532,13 +532,14 @@ function renderClassifica(data) {
   $content.querySelectorAll('[data-pick]').forEach((b) => b.addEventListener('click', () => {
     clsState.sel = b.dataset.pick; render();
   }));
+  bindChartRange();
 }
 
 // =====================================================================
 // Grafico posizioni nel tempo
 // =====================================================================
 
-function rankChart(history, names, selected, { height = 280, compact = false } = {}) {
+function rankChart(history, names, selected, { height = 280, compact = false, rivals = [], allDates = false } = {}) {
   const W = 320, H = height, padY = 10;
   const maxRank = Math.max(names.length, 2);
   const n = history.length;
@@ -554,9 +555,9 @@ function rankChart(history, names, selected, { height = 280, compact = false } =
     });
     return d.trim();
   };
-  const others = compact ? [] : names.filter((nm) => nm !== selected);
+  const others = (compact ? [] : names.filter((nm) => nm !== selected)).filter((nm) => !rivals.includes(nm));
   const lastPos = n ? history[n - 1].pos[selected] : null;
-  const labels = n ? [history[0], history[Math.floor((n - 1) / 2)], history[n - 1]].map((w) => w.date) : [];
+  const labels = !n ? [] : (allDates ? history : [history[0], history[Math.floor((n - 1) / 2)], history[n - 1]]).map((w) => w.date);
   const axis = compact ? [1, Math.ceil(maxRank / 2), maxRank] : Array.from({ length: maxRank }, (_, i) => i + 1);
 
   return `<div class="chart">
@@ -565,13 +566,67 @@ function rankChart(history, names, selected, { height = 280, compact = false } =
       <div class="chart-plot" style="height:${H}px" role="img" aria-label="Posizione in classifica di ${esc(selected)} mercoledì per mercoledì${lastPos ? `, oggi ${lastPos}°` : ''}">
         <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
           ${others.map((nm) => `<path d="${pathFor(nm)}" class="line-other" vector-effect="non-scaling-stroke"/>`).join('')}
+          ${rivals.map((nm) => `<path d="${pathFor(nm)}" class="line-rival" vector-effect="non-scaling-stroke"/>`).join('')}
           <path d="${pathFor(selected)}" class="line-sel" vector-effect="non-scaling-stroke"/>
         </svg>
+        ${rivals.map((nm) => { const r = n ? history[n - 1].pos[nm] : null; return r ? `<span class="chart-rival" style="top:${(y(r) / H * 100).toFixed(2)}%">${esc(firstName(nm))}</span>` : ''; }).join('')}
         ${lastPos ? `<span class="chart-dot" style="top:${(y(lastPos) / H * 100).toFixed(2)}%"></span>` : ''}
       </div>
     </div>
     <div class="chart-x" aria-hidden="true">${labels.map((l) => `<span>${esc(l)}</span>`).join('')}</div>
   </div>`;
+}
+
+// Finestra del grafico: tutta la stagione o solo le ultime settimane
+const RECENT_WEEKS = 5;
+let chartRange = 'all';
+try { chartRange = localStorage.getItem('mxlv-chart-range') === 'recent' ? 'recent' : 'all'; } catch (e) { /* niente */ }
+
+// Sorpassi tra una settimana e la successiva, dal più recente
+function overtakes(history, sel) {
+  const out = [];
+  for (let i = 1; i < history.length; i++) {
+    const a = history[i - 1].pos, b = history[i].pos;
+    if (!a[sel] || !b[sel]) continue;
+    Object.keys(b).forEach((nm) => {
+      if (nm === sel || !a[nm]) return;
+      if (a[nm] < a[sel] && b[nm] > b[sel]) out.push({ up: true, who: nm, date: history[i].date });
+      if (a[nm] > a[sel] && b[nm] < b[sel]) out.push({ up: false, who: nm, date: history[i].date });
+    });
+  }
+  return out.reverse();
+}
+
+function rankChartCard(history, names, sel, { compact = false, height = 280, best = null } = {}) {
+  const recent = chartRange === 'recent' && history.length > 2;
+  const h = recent ? history.slice(-(RECENT_WEEKS + 1)) : history;
+  const moves = recent ? overtakes(h, sel) : [];
+  const rivals = [...new Set(moves.map((m) => m.who))];
+  const me = firstName(sel);
+  return `<section class="card chart-card">
+    <div class="ar-top chart-head">
+      <span class="label caps">Posizione nel tempo</span>
+      <div class="mini-seg" role="group" aria-label="Periodo del grafico">
+        <button type="button" data-range="all" aria-pressed="${!recent}" class="${!recent ? 'on' : ''}">Stagione</button>
+        <button type="button" data-range="recent" aria-pressed="${recent}" class="${recent ? 'on' : ''}">Ultime ${RECENT_WEEKS}</button>
+      </div>
+    </div>
+    ${rankChart(h, names, sel, { height: recent ? Math.max(height, 180) : height, compact, rivals, allDates: recent })}
+    ${recent ? (moves.length
+      ? `<ul class="moves">${moves.map((m) => `<li class="${m.up ? 'up' : 'down'}"><span class="mv-ico">${m.up ? '▲' : '▼'}</span><span>${m.up ? `${esc(me)} supera ${esc(firstName(m.who))}` : `${esc(firstName(m.who))} supera ${esc(me)}`}</span><span class="mv-date">${esc(m.date)}</span></li>`).join('')}</ul>`
+      : '<p class="muted small moves-empty">Nessun sorpasso nelle ultime settimane.</p>')
+      : (best ? `<p class="muted small moves-empty">Miglior posizione: ${best}°</p>` : '')}
+  </section>`;
+}
+
+function bindChartRange() {
+  $content.querySelectorAll('[data-range]').forEach((b) => b.addEventListener('click', () => {
+    chartRange = b.dataset.range;
+    try { localStorage.setItem('mxlv-chart-range', chartRange); } catch (e) { /* niente */ }
+    const y = window.scrollY;
+    render();
+    window.scrollTo(0, y);
+  }));
 }
 
 function rankSummary(history, name) {
@@ -928,10 +983,7 @@ function renderProfilo(data, key) {
       <div class="who right"><span class="label caps">Bonus</span><span class="small">${dash(d.bonusAcc)} accumulati · ${dash(d.bonusRes)} residui</span></div>
     </section>
 
-    ${data.history.length > 1 && s.best ? `<section class="card chart-card">
-      <div class="ar-top"><span class="label caps">Posizione nel tempo</span><span class="label">Migliore: ${s.best}°</span></div>
-      ${rankChart(data.history, data.players.map((pl) => pl.name), name, { height: 140, compact: true })}
-    </section>` : ''}
+    ${data.history.length > 1 && s.best ? rankChartCard(data.history, data.players.map((pl) => pl.name), name, { compact: true, height: 140, best: s.best }) : ''}
 
     <section class="section">
       <div class="section-head"><h2 class="section-title">Le sue chiamate</h2><span class="label">${calls.length ? `${calls.length} ${calls.length === 1 ? 'serata' : 'serate'}${covered ? ` · ${covered} al posto di altri` : ''}` : ''}</span></div>
@@ -940,6 +992,7 @@ function renderProfilo(data, key) {
     </section>`;
 
   figurinaCleanup = setupFigurina();
+  bindChartRange();
 }
 
 // =====================================================================

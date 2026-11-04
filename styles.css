@@ -751,3 +751,23 @@ a.card:active, a.row:active, .rule:has(.rule-head:active) { background: var(--su
   a.card:active, a.row:active, .rule:has(.rule-head:active), .btn-primary:active, .live-cta:active, .anthem-btn:active,
   .btn-ghost:active, .refresh:active, .cal-clear:active, .person:active, .pod:active, .pick:active, .tabbar a:active svg { transform: none; }
 }
+
+/* Grafico: periodo e sorpassi */
+.chart-head { align-items: center; }
+.mini-seg { display: inline-flex; padding: 2px; border-radius: 10px; background: var(--surface-2); }
+.mini-seg button {
+  min-height: 32px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent;
+  color: var(--muted); font-family: var(--body); font-size: 12px; font-weight: 600; cursor: pointer;
+  -webkit-tap-highlight-color: transparent; transition: opacity .18s ease;
+}
+.mini-seg button.on { background: var(--line); color: var(--text); }
+.mini-seg button:active { opacity: .6; transition-duration: 0s; }
+.line-rival { fill: none; stroke: var(--text-2); stroke-width: 1.5; stroke-dasharray: 4 3; stroke-linejoin: round; stroke-linecap: round; opacity: .7; }
+.chart-rival { position: absolute; right: 8px; transform: translateY(-120%); font-size: 11px; font-weight: 600; color: var(--text-2); white-space: nowrap; pointer-events: none; }
+.moves { list-style: none; margin: 2px 0 0; padding: 0 6px; display: flex; flex-direction: column; gap: 6px; }
+.moves li { display: flex; align-items: baseline; gap: 8px; font-size: 14px; }
+.moves .mv-ico { font-size: 11px; width: 12px; }
+.moves li.up .mv-ico { color: #3DDC84; }
+.moves li.down .mv-ico { color: #FF6B6B; }
+.moves .mv-date { margin-left: auto; font-size: 12px; color: var(--faint); font-variant-numeric: tabular-nums; }
+.moves-empty { margin: 0; padding: 0 6px; }

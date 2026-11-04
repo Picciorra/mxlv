@@ -722,3 +722,32 @@ p.center { margin: -8px 0 0; }
 .turn-who { flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .turn-who .turn-name { flex-grow: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .caller .who .instead, .caller-card .who .instead { font-size: 13px; }
+
+/* =====================================================================
+   Stati premuti: feedback immediato al tocco, rilascio morbido
+   ===================================================================== */
+a, button { -webkit-tap-highlight-color: transparent; }
+a.card, a.row, .caller, .person, .pod, .pick, .tabbar a, .segmented button, .rule,
+.btn-primary, .btn-ghost, .live-cta, .anthem-btn, .see-all, .back, .refresh, .cal-clear {
+  transition: transform .18s ease, background-color .18s ease, opacity .18s ease;
+}
+/* Card e righe: si schiacciano un filo e si schiariscono */
+a.card:active, a.row:active, .rule:has(.rule-head:active) { background: var(--surface-2); transform: scale(.985); transition-duration: 0s; }
+.caller:active { opacity: .7; transition-duration: 0s; }
+/* Bottoni pieni */
+.btn-primary:active, .live-cta:active, .anthem-btn:active { opacity: .85; transform: scale(.96); transition-duration: 0s; }
+/* Bottoni secondari e tondi */
+.btn-ghost:active, .refresh:active, .cal-clear:active { background: var(--surface-2); transform: scale(.96); transition-duration: 0s; }
+/* Link di testo */
+.see-all:active, .back:active { opacity: .55; transition-duration: 0s; }
+/* Avatar toccabili (podio, presenze, filtro calendario) */
+.person:active, .pod:active, .pick:active { transform: scale(.93); opacity: .8; transition-duration: 0s; }
+/* Segmenti e barra in basso */
+.segmented button:active { opacity: .6; transition-duration: 0s; }
+.tabbar a svg { transition: transform .18s ease; }
+.tabbar a:active { opacity: .6; transition-duration: 0s; }
+.tabbar a:active svg { transform: scale(.88); transition-duration: 0s; }
+@media (prefers-reduced-motion: reduce) {
+  a.card:active, a.row:active, .rule:has(.rule-head:active), .btn-primary:active, .live-cta:active, .anthem-btn:active,
+  .btn-ghost:active, .refresh:active, .cal-clear:active, .person:active, .pod:active, .pick:active, .tabbar a:active svg { transform: none; }
+}

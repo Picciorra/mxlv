@@ -1243,6 +1243,9 @@ document.addEventListener('click', (e) => {
 
 // Su iPhone, passando da una lista lunga a una pagina corta, Safari a volte
 // ignora il ritorno in cima e lascia la pagina spostata: lo ripetiamo.
+// Su iPhone gli stati premuti (:active) funzionano solo se la pagina ascolta il tocco.
+document.addEventListener('touchstart', () => {}, { passive: true });
+
 if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 const toTop = () => { window.scrollTo(0, 0); document.documentElement.scrollTop = 0; document.body.scrollTop = 0; };
 window.addEventListener('hashchange', () => {

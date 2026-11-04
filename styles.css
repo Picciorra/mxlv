@@ -776,9 +776,9 @@ a.card:active, a.row:active, .rule:has(.rule-head:active) { background: var(--su
 .rain { position: fixed; inset: 0; pointer-events: none; z-index: 1000; overflow: hidden; }
 .rain span { position: absolute; left: 0; top: 0; line-height: 1; will-change: transform; }
 .pull-hint {
-  position: fixed; left: 0; right: 0; top: calc(6px + env(safe-area-inset-top)); z-index: 999;
-  text-align: center; font-size: 12px; font-weight: 600; letter-spacing: .02em; color: var(--muted);
-  opacity: 0; pointer-events: none; transition: opacity .2s ease, color .15s ease;
+  position: fixed; left: 0; right: 0; top: calc(10px + env(safe-area-inset-top)); z-index: 999;
+  text-align: center; font-size: 13px; font-weight: 600; letter-spacing: .02em; color: var(--text-2);
+  visibility: hidden; pointer-events: none;
 }
-.pull-hint.show { transition: color .15s ease; }
+.pull-hint.show { visibility: visible; }
 .pull-hint.ready { color: var(--accent); }

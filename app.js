@@ -1313,12 +1313,11 @@ function emojiRain() {
   hint.setAttribute('aria-hidden', 'true');
   document.body.appendChild(hint);
   const showHint = (d) => {
-    if (d <= 8) { hint.classList.remove('show', 'ready'); return; }
+    if (d <= 30) { hint.classList.remove('show', 'ready'); return; }
     const ready = d > PULL;
     hint.textContent = ready ? 'Lascia per aggiornare' : 'Tira per aggiornare';
     hint.classList.add('show');
     hint.classList.toggle('ready', ready);
-    hint.style.opacity = Math.min(1, d / 60).toFixed(2);
   };
   window.addEventListener('touchstart', (e) => {
     if (window.scrollY > 0 || e.touches.length !== 1 || e.target.closest('.fig, input')) { startY = null; return; }
@@ -1331,7 +1330,6 @@ function emojiRain() {
   }, { passive: true });
   window.addEventListener('touchend', () => {
     showHint(0);
-    hint.style.opacity = '';
     if (startY !== null && pulled > PULL && window.scrollY <= 0 && Date.now() - rainAt > 2500) {
       rainAt = Date.now();
       emojiRain();

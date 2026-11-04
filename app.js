@@ -1266,6 +1266,65 @@ function writeCache(data) {
 }
 
 let loading = false;
+// =====================================================================
+// Easter egg: tira giù dall'alto e piovono ✅ ❌ ✈️ (e intanto aggiorna)
+// =====================================================================
+
+const RAIN = ['✅', '✅', '✅', '❌', '❌', '✈️'];
+let rainAt = 0;
+
+function emojiRain() {
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const box = document.createElement('div');
+  box.className = 'rain';
+  box.setAttribute('aria-hidden', 'true');
+  document.body.appendChild(box);
+  const W = window.innerWidth, H = window.innerHeight;
+  let longest = 0;
+  for (let i = 0; i < 70; i++) {
+    const el = document.createElement('span');
+    el.textContent = RAIN[Math.floor(Math.random() * RAIN.length)];
+    const size = 20 + Math.random() * 22;
+    el.style.fontSize = size + 'px';
+    box.appendChild(el);
+    // Esplode dall'alto al centro, poi ricade a cascata
+    const x0 = W / 2 + (Math.random() - 0.5) * 60;
+    const peakX = x0 + (Math.random() - 0.5) * W * 1.1;
+    const peakY = 40 + Math.random() * H * 0.25;
+    const endX = peakX + (Math.random() - 0.5) * 80;
+    const spin = (Math.random() - 0.5) * 720;
+    const dur = 1700 + Math.random() * 1300;
+    const delay = Math.random() * 450;
+    longest = Math.max(longest, dur + delay);
+    el.animate([
+      { transform: `translate(${x0}px, -40px) rotate(0deg) scale(.4)`, opacity: 0 },
+      { transform: `translate(${peakX}px, ${peakY}px) rotate(${spin * 0.3}deg) scale(1)`, opacity: 1, offset: 0.22, easing: 'ease-in' },
+      { transform: `translate(${endX}px, ${H + 60}px) rotate(${spin}deg) scale(1)`, opacity: 1 }
+    ], { duration: dur, delay, easing: 'cubic-bezier(.2,.7,.4,1)', fill: 'both' });
+  }
+  setTimeout(() => box.remove(), longest + 100);
+}
+
+(() => {
+  let startY = null, pulled = 0;
+  window.addEventListener('touchstart', (e) => {
+    if (window.scrollY > 0 || e.touches.length !== 1 || e.target.closest('.fig, input')) { startY = null; return; }
+    startY = e.touches[0].clientY; pulled = 0;
+  }, { passive: true });
+  window.addEventListener('touchmove', (e) => {
+    if (startY === null) return;
+    pulled = e.touches[0].clientY - startY;
+  }, { passive: true });
+  window.addEventListener('touchend', () => {
+    if (startY !== null && pulled > 110 && window.scrollY <= 0 && Date.now() - rainAt > 2500) {
+      rainAt = Date.now();
+      emojiRain();
+      refresh();
+    }
+    startY = null; pulled = 0;
+  }, { passive: true });
+})();
+
 async function refresh() {
   if (loading) return;
   loading = true;

@@ -771,3 +771,7 @@ a.card:active, a.row:active, .rule:has(.rule-head:active) { background: var(--su
 .moves li.down .mv-ico { color: #FF6B6B; }
 .moves .mv-date { margin-left: auto; font-size: 12px; color: var(--faint); font-variant-numeric: tabular-nums; }
 .moves-empty { margin: 0; padding: 0 6px; }
+
+/* Easter egg: pioggia di ✅ ❌ ✈️ */
+.rain { position: fixed; inset: 0; pointer-events: none; z-index: 1000; overflow: hidden; }
+.rain span { position: absolute; left: 0; top: 0; line-height: 1; will-change: transform; }

@@ -1162,7 +1162,8 @@ const waLink = (text) => 'https://wa.me/?text=' + encodeURIComponent(text);
 
 const UTIL_ITEMS = [
   { href: '#regolamento', title: 'Regolamento MXLV 2026', sub: 'Regole in breve e i 7 articoli', icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5v14z"></path><path d="M6.5 17A2.5 2.5 0 0 0 4 19.5 2.5 2.5 0 0 0 6.5 22H20v-5"></path></svg>' },
-  { href: '#gala', title: 'Gran Galà', sub: 'Le votazioni in diretta della serata', icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l2.9 6.26L22 9.27l-5.2 4.87L18.18 22 12 18.56 5.82 22 7.2 14.14 2 9.27l7.1-1.01L12 2z"></path></svg>' }
+  { href: '#gala', title: 'Gran Galà', sub: 'Le votazioni in diretta della serata', icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l2.9 6.26L22 9.27l-5.2 4.87L18.18 22 12 18.56 5.82 22 7.2 14.14 2 9.27l7.1-1.01L12 2z"></path></svg>' },
+  { href: '#telecomando', title: 'Telecomando', sub: 'Regia della presentazione, serve il PIN', icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="3"></rect><circle cx="12" cy="8" r="2"></circle><path d="M12 14v.01M12 17.5v.01"></path></svg>' }
 ];
 
 function renderUtility() {
@@ -1321,6 +1322,165 @@ function renderGala() {
   };
 }
 
+// =====================================================================
+// Telecomando: regia della presentazione dal telefono, protetta dal PIN
+// =====================================================================
+
+const PIN_KEY = 'mxlv-regia-pin';
+const remote = { pin: '', row: null, poll: null, votes: 0, error: false, checking: false, pinErr: '', busy: false, confirmReset: false };
+
+function getPin() { try { return localStorage.getItem(PIN_KEY) || ''; } catch (e) { return ''; } }
+function setPin(v) { try { if (v) localStorage.setItem(PIN_KEY, v); else localStorage.removeItem(PIN_KEY); } catch (e) { /* niente */ } }
+
+async function remoteFetch() {
+  const sb = await loadSupabase();
+  const { data, error } = await sb.from('gala_remote').select('slide,total,title,next_title,poll_id,state_at').eq('id', 1).maybeSingle();
+  if (error) throw error;
+  remote.row = data;
+  remote.poll = null; remote.votes = 0;
+  if (data && data.poll_id) {
+    const [p, v] = await Promise.all([
+      sb.from('polls').select('id,question,status').eq('id', data.poll_id).maybeSingle(),
+      sb.from('votes').select('voter', { count: 'exact', head: true }).eq('poll_id', data.poll_id)
+    ]);
+    if (!p.error) remote.poll = p.data;
+    if (!v.error) remote.votes = v.count || 0;
+  }
+  remote.error = false;
+}
+
+function remoteBody() {
+  if (!remote.pin) {
+    return `<section class="card remote-lock">
+      <p class="muted small gala-p">La regia della presentazione è riservata. Inserisci il PIN a 4 cifre.</p>
+      <form id="remote-pin-form" class="remote-pin-row">
+        <input id="remote-pin" class="remote-pin" type="password" inputmode="numeric" autocomplete="off" maxlength="12" placeholder="PIN" aria-label="PIN regia">
+        <button type="submit" class="remote-unlock" ${remote.checking ? 'disabled' : ''}>${remote.checking ? 'Controllo...' : 'Sblocca'}</button>
+      </form>
+      ${remote.pinErr ? `<p class="remote-err">${esc(remote.pinErr)}</p>` : ''}
+    </section>`;
+  }
+  if (remote.error) return '<div class="note"><span>Non riesco a collegarmi alla presentazione. Controlla la connessione e riprova.</span><button type="button" id="remote-retry">Riprova</button></div>';
+  const r = remote.row;
+  if (!r) return '<div class="skeleton row-skel"></div><div class="skeleton row-skel"></div>';
+  const fresh = r.state_at && (Date.now() - new Date(r.state_at).getTime()) < 6 * 3600e3;
+  const p = remote.poll;
+  const pollCard = p ? `<section class="card remote-poll">
+      <span class="gala-live"><span class="live-dot${p.status === 'open' ? '' : ' off'}" aria-hidden="true"></span>${p.status === 'open' ? 'Votazione aperta' : p.status === 'closed' ? 'Votazione chiusa' : 'Votazione in attesa'}</span>
+      <b class="remote-q">${esc(p.question)}</b>
+      <p class="gala-count"><b>${remote.votes}</b> voti</p>
+      <div class="remote-poll-btns">
+        ${p.status === 'open'
+          ? `<button type="button" class="remote-btn accent" data-poll="close" ${remote.busy ? 'disabled' : ''}>Chiudi votazione</button>`
+          : `<button type="button" class="remote-btn" data-poll="open" ${remote.busy ? 'disabled' : ''}>${p.status === 'closed' ? 'Riapri' : 'Apri'} votazione</button>`}
+        <button type="button" class="remote-btn danger" data-poll="reset" ${remote.busy ? 'disabled' : ''}>${remote.confirmReset ? 'Sicuro? Tocca di nuovo' : 'Azzera voti'}</button>
+      </div>
+    </section>` : '';
+  return `<section class="card remote-now" aria-live="polite">
+      <span class="remote-label">${fresh ? `In onda, ${r.slide + 1} di ${r.total}` : 'Presentazione non avviata'}</span>
+      <b class="remote-title">${esc(fresh ? r.title || '' : 'Apri la presentazione sul portatile')}</b>
+      ${fresh ? `<span class="remote-next">Dopo: ${esc(r.next_title || '')}</span>` : ''}
+    </section>
+    <div class="remote-pad">
+      <button type="button" class="remote-big prev" data-cmd="prev" aria-label="Slide precedente">Indietro</button>
+      <button type="button" class="remote-big next" data-cmd="next" aria-label="Slide successiva">Avanti</button>
+    </div>
+    ${pollCard}
+    <div class="remote-foot">
+      <button type="button" class="btn-ghost" data-cmd="first">Torna all'inizio</button>
+      <button type="button" class="btn-ghost" id="remote-logout">Esci dalla regia</button>
+    </div>`;
+}
+
+async function remoteCall(fn, args) {
+  const { data, error } = await sbClient.rpc(fn, { p_key: remote.pin, ...args });
+  if (error) throw error;
+  return data;
+}
+
+function paintRemote() {
+  const box = document.getElementById('remote-body');
+  if (!box) return;
+  box.innerHTML = remoteBody();
+  const form = box.querySelector('#remote-pin-form');
+  if (form) {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const pin = box.querySelector('#remote-pin').value.trim();
+      if (!pin) return;
+      remote.checking = true; remote.pinErr = ''; paintRemote();
+      try {
+        await loadSupabase();
+        const { data, error } = await sbClient.rpc('regia_check', { p_key: pin });
+        if (error || data !== true) throw new Error('pin');
+        remote.pin = pin; setPin(pin);
+        remote.checking = false; paintRemote();
+        remoteStart();
+      } catch (err) {
+        remote.checking = false; remote.pinErr = 'PIN sbagliato. Riprova tra qualche secondo.'; paintRemote();
+      }
+    });
+    const input = box.querySelector('#remote-pin'); if (input) input.focus();
+  }
+  const retry = box.querySelector('#remote-retry');
+  if (retry) retry.addEventListener('click', () => { remote.error = false; paintRemote(); remoteReload(); });
+  box.querySelectorAll('[data-cmd]').forEach((b) => b.addEventListener('click', async () => {
+    b.classList.add('sent');
+    setTimeout(() => b.classList.remove('sent'), 300);
+    if (navigator.vibrate) navigator.vibrate(15);
+    try {
+      const ok = await remoteCall('regia_cmd', { p_cmd: b.dataset.cmd });
+      if (ok === false) { remote.pin = ''; setPin(''); remote.pinErr = 'Il PIN non è più valido.'; paintRemote(); }
+    } catch (e) { remote.error = true; paintRemote(); }
+  }));
+  box.querySelectorAll('[data-poll]').forEach((b) => b.addEventListener('click', async () => {
+    const act = b.dataset.poll;
+    if (!remote.poll) return;
+    if (act === 'reset' && !remote.confirmReset) { remote.confirmReset = true; paintRemote(); setTimeout(() => { remote.confirmReset = false; paintRemote(); }, 4000); return; }
+    remote.confirmReset = false; remote.busy = true; paintRemote();
+    try { await remoteCall('regia_' + act, { p_poll: remote.poll.id }); } catch (e) { /* lo stato si riallinea sotto */ }
+    remote.busy = false;
+    await remoteReload();
+  }));
+  const out = box.querySelector('#remote-logout');
+  if (out) out.addEventListener('click', () => { remote.pin = ''; setPin(''); paintRemote(); });
+}
+
+let remoteReload = () => Promise.resolve();
+let remoteStart = () => {};
+
+function renderTelecomando() {
+  $content.innerHTML = `
+    ${backLink('#utility', 'Utility')}
+    <div class="title-block"><h1>Telecomando</h1><p class="muted">Regia della presentazione del Galà</p></div>
+    <div id="remote-body" class="remote-body"></div>`;
+  remote.pin = getPin();
+  remote.row = null; remote.pinErr = ''; remote.confirmReset = false;
+
+  let channel = null;
+  let alive = true;
+  remoteReload = () => remoteFetch().then(() => alive && paintRemote()).catch(() => { if (alive) { remote.error = true; paintRemote(); } });
+  remoteStart = () => {
+    remoteReload().then(() => {
+      if (!alive || !sbClient || channel) return;
+      channel = sbClient.channel('remote-' + Date.now())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'gala_remote' }, remoteReload)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'polls' }, remoteReload)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'votes' }, remoteReload)
+        .subscribe();
+    });
+  };
+  paintRemote();
+  if (remote.pin) remoteStart();
+  const onVisible = () => { if (document.visibilityState === 'visible' && remote.pin) remoteReload(); };
+  document.addEventListener('visibilitychange', onVisible);
+  pageCleanup = () => {
+    alive = false;
+    document.removeEventListener('visibilitychange', onVisible);
+    if (channel && sbClient) sbClient.removeChannel(channel);
+  };
+}
+
 function renderRegolamento() {
   $content.innerHTML = `
     ${backLink('#utility', 'Utility')}
@@ -1376,6 +1536,7 @@ const ROUTES = {
   utility: { tab: 'utility', view: renderUtility, title: 'Utility', static: true },
   regolamento: { tab: 'utility', view: renderRegolamento, title: 'Regolamento', static: true },
   gala: { tab: 'utility', view: renderGala, title: 'Gran Galà', static: true },
+  telecomando: { tab: 'utility', view: renderTelecomando, title: 'Telecomando', static: true },
   profilo: { tab: 'classifica', view: renderProfilo, title: 'Profilo' },
   serata: { tab: 'calendario', view: renderSerata, title: 'Serata' }
 };

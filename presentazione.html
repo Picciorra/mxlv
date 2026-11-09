@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Gran Galà MXLV</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#050607">
+  <link rel="icon" href="img/icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="gala/presentazione.css?v=1">
+</head>
+<body>
+  <div class="viewport">
+    <div class="stage" id="stage"></div>
+  </div>
+
+  <div class="start" id="start">
+    <div class="start-box">
+      <span class="start-eyebrow">MXLV 2026</span>
+      <h1>Gran Galà</h1>
+      <label class="start-label" for="pin">PIN regia</label>
+      <input id="pin" class="start-pin" type="password" inputmode="numeric" autocomplete="off" maxlength="12" placeholder="••••">
+      <p class="start-msg" id="start-msg">Con il PIN la presentazione si collega al telecomando e alle votazioni.</p>
+      <button type="button" class="start-go" id="start-go">Inizia il Galà</button>
+      <button type="button" class="start-skip" id="start-skip">Continua senza collegamento</button>
+    </div>
+  </div>
+
+  <nav class="hud" id="hud" aria-label="Controlli presentazione">
+    <button type="button" id="hud-prev" aria-label="Slide precedente">◀</button>
+    <select id="hud-jump" aria-label="Vai alla slide"></select>
+    <button type="button" id="hud-next" aria-label="Slide successiva">▶</button>
+    <span class="hud-link" id="hud-link" title="Collegamento al telecomando"></span>
+    <button type="button" id="hud-fs">Schermo intero</button>
+  </nav>
+
+  <script src="lib/supabase.js?v=2.45.4"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="gala/presentazione.js?v=1"></script>
+</body>
+</html>

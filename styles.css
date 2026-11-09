@@ -827,3 +827,32 @@ a.card:active, a.row:active, .rule:has(.rule-head:active) { background: var(--su
 .gala-check { width: 26px; height: 26px; border-radius: 999px; background: var(--accent); color: var(--bg); display: inline-flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 800; flex-shrink: 0; }
 .gala-count { margin: 0; font-size: 14px; color: var(--text-2); }
 .gala-count b { font-family: var(--display); font-size: 20px; color: var(--accent); }
+
+/* Telecomando del Galà */
+.remote-body { display: flex; flex-direction: column; gap: 14px; }
+.remote-lock { padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+.remote-pin-row { display: flex; gap: 8px; }
+.remote-pin { flex: 1; min-width: 0; height: 52px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2); color: var(--text); font-family: var(--body); font-size: 22px; letter-spacing: .35em; padding: 0 14px; }
+.remote-pin:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+.remote-unlock { height: 52px; padding: 0 18px; border: 0; border-radius: 12px; background: var(--accent); color: var(--bg); font-family: var(--body); font-weight: 700; font-size: 15px; cursor: pointer; }
+.remote-unlock:disabled { opacity: .6; }
+.remote-err { margin: 0; font-size: 14px; color: var(--down); }
+.remote-now { padding: 18px; display: flex; flex-direction: column; gap: 6px; }
+.remote-label { font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); }
+.remote-title { font-family: var(--display); font-weight: 700; font-size: 30px; line-height: 1.05; text-transform: uppercase; overflow-wrap: anywhere; }
+.remote-next { font-size: 14px; color: var(--muted); }
+.remote-pad { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; }
+.remote-big { height: 168px; border: 0; border-radius: 22px; font-family: var(--display); font-weight: 800; font-size: 26px; text-transform: uppercase; letter-spacing: .04em; cursor: pointer; transition: transform .15s ease, opacity .15s ease; touch-action: manipulation; -webkit-user-select: none; user-select: none; }
+.remote-big.prev { background: var(--surface-2); color: var(--text-2); }
+.remote-big.next { background: var(--accent); color: var(--bg); font-size: 34px; }
+.remote-big.sent, .remote-big:active { transform: scale(.95); opacity: .85; }
+.remote-poll { padding: 18px; display: flex; flex-direction: column; gap: 10px; }
+.remote-q { font-size: 17px; line-height: 1.3; }
+.remote-poll .live-dot.off { background: var(--faint); animation: none; }
+.remote-poll-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.remote-btn { min-height: 48px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2); color: var(--text); font-family: var(--body); font-weight: 700; font-size: 14px; cursor: pointer; padding: 0 10px; }
+.remote-btn.accent { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+.remote-btn.danger { color: var(--down); }
+.remote-btn:disabled { opacity: .6; }
+.remote-foot { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.remote-foot .btn-ghost { background: transparent; font-family: var(--body); cursor: pointer; }

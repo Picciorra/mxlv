@@ -1,0 +1,4 @@
+Qui vanno i video della presentazione:
+- inno.mp4 (inno con sottotitoli)
+- app-showcase.mp4 (video dell'app)
+Le canzoni protette (FE!N ecc.) NON vanno qui: il repo è pubblico.

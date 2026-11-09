@@ -125,7 +125,7 @@
   // ===================================================================
 
   const stage = document.getElementById('stage');
-  const st = { i: 0, step: 0, pin: '', linked: false, active: false, sb: null, voters: [], polls: [], votes: [], lastSeq: null, el: null, texts: {}, editing: false, seen: new Set() };
+  const st = { i: 0, step: 0, pin: '', linked: false, active: false, sb: null, voters: [], polls: [], votes: [], lastSeq: null, el: null, texts: {}, editing: false, devs: new Map() };
   st.session = Math.random().toString(36).slice(2) + Date.now().toString(36);
 
   // Nome del dispositivo, per far sapere al telefono dove gira la presentazione
@@ -191,12 +191,16 @@
       .subscribe((status) => setLink(status === 'SUBSCRIBED' ? (st.active || !st.linked ? 'on' : '') : (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') ? 'err' : ''));
   }
 
-  // Chi apre Gran Galà nell'app si accende sulla copertina (e resta acceso per la serata)
+  // Chi apre Gran Galà nell'app si accende nella slide 'Come si vota'
   function subscribePresence() {
     const c = sb(); if (!c) return;
     const ch = c.channel('gala-presenza', { config: { presence: { key: 'tv-' + st.session } } });
     ch.on('presence', { event: 'sync' }, () => {
-      Object.values(ch.presenceState()).forEach((metas) => metas.forEach((m) => { if (m && m.name) st.seen.add(m.name); }));
+      // Ogni telefono conta per un nome solo; chi si è collegato resta acceso anche se poi blocca il telefono.
+      Object.values(ch.presenceState()).forEach((metas) => metas.forEach((m) => {
+        if (!m || !m.dev) return;
+        if (m.name) st.devs.set(m.dev, m.name); else st.devs.delete(m.dev);
+      }));
       paintRoom(st.el);
     }).subscribe((status) => {
       // Il server manda la lista dei presenti solo a chi è a sua volta "presente": la TV si annuncia.
@@ -214,7 +218,8 @@
       box.innerHTML = names.map((n) => `<div class="room-face" data-n="${esc(n)}"><span class="rf-img">${avatar(n)}</span><span class="rf-name">${esc(firstName(n))}</span></div>`).join('');
     }
     let on = 0;
-    box.querySelectorAll('.room-face').forEach((f) => { const lit = st.seen.has(f.dataset.n); f.classList.toggle('on', lit); if (lit) on++; });
+    const lit = new Set(st.devs.values());
+    box.querySelectorAll('.room-face').forEach((f) => { const on1 = lit.has(f.dataset.n); f.classList.toggle('on', on1); if (on1) on++; });
     const cnt = root.querySelector('[data-room-count]');
     if (cnt) cnt.textContent = `${on} su ${names.length}`;
     box.closest('.room').classList.toggle('full', on === names.length && on > 0);

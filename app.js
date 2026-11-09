@@ -1297,10 +1297,17 @@ function paintGala() {
 }
 
 let presence = null;
+// Ogni telefono ha un suo codice fisso: se cambia nome, sulla TV si sostituisce invece di sommarsi.
+function deviceId() {
+  try {
+    let id = localStorage.getItem('mxlv-device');
+    if (!id) { id = Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem('mxlv-device', id); }
+    return id;
+  } catch (e) { return 'tmp-' + Math.random().toString(36).slice(2); }
+}
 function trackMe() {
-  const me = getVoter();
   if (!presence) return;
-  if (me) presence.track({ name: me }).catch(() => {}); else presence.untrack().catch(() => {});
+  presence.track({ dev: deviceId(), name: getVoter() || null }).catch(() => {});
 }
 
 function renderGala() {
@@ -1317,7 +1324,7 @@ function renderGala() {
   reload().then(() => {
     if (!alive || !sbClient) return;
     // Presenza: chi è su questa pagina si accende sulla copertina della presentazione
-    presence = sbClient.channel('gala-presenza', { config: { presence: { key: 'app-' + Math.random().toString(36).slice(2) } } });
+    presence = sbClient.channel('gala-presenza', { config: { presence: { key: 'app-' + deviceId() } } });
     presence.subscribe((status) => { if (status === 'SUBSCRIBED') trackMe(); });
     channel = sbClient.channel('gala-' + Date.now())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'polls' }, reload)

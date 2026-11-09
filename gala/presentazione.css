@@ -132,11 +132,11 @@ body { background: var(--black); color: var(--text); font-family: var(--font); o
 .vote.closed.reveal .opt.winner::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(100deg, transparent 30%, rgba(255,255,255,.55) 50%, transparent 70%); transform: translateX(-100%); animation: sweep 1.1s .25s ease-out forwards; }
 @keyframes sweep { to { transform: translateX(100%); } }
 .vote-foot { display: flex; justify-content: space-between; align-items: center; gap: 40px; }
-.voters { display: flex; gap: 18px; flex-wrap: wrap; }
+.voters { display: flex; gap: 16px; flex-wrap: nowrap; flex: none; }
 .voter { position: relative; width: 88px; height: 88px; border-radius: 50%; border: 4px solid var(--line); background: var(--surface); overflow: hidden; opacity: .35; filter: grayscale(1); transition: opacity .4s ease, filter .4s ease, border-color .4s ease, transform .45s cubic-bezier(.2,1.6,.4,1); }
 .voter img, .voter .initials { width: 100%; height: 100%; object-fit: cover; display: grid; place-items: center; font-weight: 600; font-size: 30px; color: var(--text-2); letter-spacing: -.02em; }
 .voter.in { opacity: 1; filter: none; border-color: var(--accent); transform: scale(1.06); }
-.vote-note { font-size: 24px; color: var(--faint); text-align: right; max-width: 700px; }
+.vote-note { font-size: 24px; line-height: 1.35; color: var(--faint); text-align: right; max-width: 460px; }
 canvas.fx { position: absolute; inset: 0; pointer-events: none; }
 
 /* --- Passaggio del microfono --- */

@@ -202,7 +202,10 @@
     ch.on('presence', { event: 'sync' }, () => {
       Object.values(ch.presenceState()).forEach((metas) => metas.forEach((m) => { if (m && m.name) st.seen.add(m.name); }));
       paintRoom(st.el);
-    }).subscribe();
+    }).subscribe((status) => {
+      // Il server manda la lista dei presenti solo a chi è a sua volta "presente": la TV si annuncia.
+      if (status === 'SUBSCRIBED') ch.track({ tv: true }).catch(() => {});
+    });
   }
 
   function paintRoom(root) {

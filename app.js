@@ -1160,13 +1160,38 @@ const RULES = [
 const ruleState = { open: 2 };
 const waLink = (text) => 'https://wa.me/?text=' + encodeURIComponent(text);
 
+const UTIL_ITEMS = [
+  { href: '#regolamento', title: 'Regolamento MXLV 2026', sub: 'Regole in breve e i 7 articoli', icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5v14z"></path><path d="M6.5 17A2.5 2.5 0 0 0 4 19.5 2.5 2.5 0 0 0 6.5 22H20v-5"></path></svg>' },
+  { href: '#gala', title: 'Gran Galà', sub: 'In arrivo per la serata di fine anno', icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l2.9 6.26L22 9.27l-5.2 4.87L18.18 22 12 18.56 5.82 22 7.2 14.14 2 9.27l7.1-1.01L12 2z"></path></svg>' }
+];
+
 function renderUtility() {
   $content.innerHTML = `
     <div class="title-block"><h1>Utility</h1><p class="muted">Inno, regolamento e Gran Galà</p></div>
 
     ${anthemHTML()}
 
-    <h2 class="section-title util-title">Regolamento MXLV 2026</h2>
+    <nav class="util-menu" aria-label="Utility">
+      ${UTIL_ITEMS.map((it) => `<a class="card util-item" href="${it.href}">
+        <span class="util-ico">${it.icon}</span>
+        <span class="util-txt"><span class="util-name">${esc(it.title)}</span><span class="util-sub">${esc(it.sub)}</span></span>
+        <span class="chev">${icons.chevronRight}</span>
+      </a>`).join('')}
+    </nav>`;
+  setupAnthem();
+}
+
+function renderGala() {
+  $content.innerHTML = `
+    ${backLink('#utility', 'Utility')}
+    <div class="title-block"><h1>Gran Galà</h1><p class="muted">Stagione 2026</p></div>
+    <div class="note">In arrivo per la serata di fine anno.</div>`;
+}
+
+function renderRegolamento() {
+  $content.innerHTML = `
+    ${backLink('#utility', 'Utility')}
+    <div class="title-block"><h1>Regolamento</h1><p class="muted">MXLV, edizione 2026</p></div>
 
     <section class="stat-grid two" aria-label="Regole in breve">
       <div class="card quick"><span class="quick-num">25 km</span><span class="label">da Piazza Grande, su strada</span></div>
@@ -1197,17 +1222,13 @@ function renderUtility() {
     </section>
 
     <a class="btn-primary" href="${waLink('Proposta di nuova regola MXLV: ')}" target="_blank" rel="noopener">${icons.plus}Proponi una nuova regola</a>
-    <p class="muted small center">Si apre WhatsApp con il messaggio pronto da mandare nel gruppo.</p>
-
-    <h2 class="section-title util-title">Gran Galà</h2>
-    <div class="note gala-empty">In arrivo per la serata di fine anno.</div>`;
+    <p class="muted small center">Si apre WhatsApp con il messaggio pronto da mandare nel gruppo.</p>`;
 
   $content.querySelectorAll('[data-rule]').forEach((b) => b.addEventListener('click', () => {
     const n = +b.dataset.rule;
     ruleState.open = ruleState.open === n ? null : n;
     render();
   }));
-  setupAnthem();
 }
 
 // =====================================================================
@@ -1220,6 +1241,8 @@ const ROUTES = {
   classifica: { tab: 'classifica', view: renderClassifica, title: 'Classifica' },
   calendario: { tab: 'calendario', view: renderCalendario, title: 'Calendario' },
   utility: { tab: 'utility', view: renderUtility, title: 'Utility', static: true },
+  regolamento: { tab: 'utility', view: renderRegolamento, title: 'Regolamento', static: true },
+  gala: { tab: 'utility', view: renderGala, title: 'Gran Galà', static: true },
   profilo: { tab: 'classifica', view: renderProfilo, title: 'Profilo' },
   serata: { tab: 'calendario', view: renderSerata, title: 'Serata' }
 };
@@ -1229,7 +1252,6 @@ let inAppNavs = 0;
 function currentRoute() {
   let [name, arg] = location.hash.slice(1).split('/');
   if (name === 'storico') { name = 'calendario'; calState.view = 'past'; }
-  if (name === 'regolamento') name = 'utility'; // vecchi link
   return ROUTES[name] ? { name, arg: decodeURIComponent(arg || ''), ...ROUTES[name] } : { name: 'mercoledi', arg: '', ...ROUTES.mercoledi };
 }
 

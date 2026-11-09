@@ -785,3 +785,9 @@ a.card:active, a.row:active, .rule:has(.rule-head:active) { background: var(--su
 
 /* Utility */
 .util-title { margin: 14px 0 -2px; }
+.util-menu { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+.util-item { display: flex; align-items: center; gap: 14px; padding: 14px 14px 14px 16px; min-height: 72px; text-decoration: none; color: var(--text); }
+.util-ico { width: 44px; height: 44px; flex-shrink: 0; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: var(--surface-2); color: var(--accent); }
+.util-txt { flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.util-name { font-size: 16px; font-weight: 600; }
+.util-sub { font-size: 13px; color: var(--muted); }

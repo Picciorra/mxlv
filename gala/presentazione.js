@@ -7,8 +7,7 @@
 
   const SB_URL = 'https://kzxufyulcxsocvtdvget.supabase.co';
   const SB_KEY = 'sb_publishable_f046qLhQ1n5Wqu3DKkwGDA_1kFCdSc_';
-  const APP_GALA_URL = 'https://picciorra.github.io/mxlv/#gala';
-  const PIN_STORE = 'mxlv-regia-pin';
+    const PIN_STORE = 'mxlv-regia-pin';
   const POS_STORE = 'mxlv-gala-pos';
   
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -32,17 +31,12 @@
   // Ogni testo con data-edit="slide.campo" si può riscrivere dalla modalità modifica.
   const E = (id, html, tag = 'span', cls = '') => `<${tag}${cls ? ` class="${cls}"` : ''} data-edit="${id}">${html}</${tag}>`;
 
-  // Copertina: sotto il titolo i Rembrandts si accendono quando aprono l'app (Utility > Gran Galà)
-  const cover = (id) => () => `<div class="glow" aria-hidden="true"></div>
+    const cover = (id) => () => `<div class="glow" aria-hidden="true"></div>
     <div class="inner">
       ${E(id + '.eyebrow', 'I Rembrandts presentano', 'div', 'eyebrow')}
       <div>
         <h1>${E(id + '.titolo', 'Gran Galà')}<span class="l2" data-edit="${id}.titolo2">MXLV 2026</span></h1>
         <div class="sub">${E(id + '.sub1', 'Mercoledì x la Vita')}<span class="dot" aria-hidden="true"></span>${E(id + '.sub2', '23 dicembre 2026')}</div>
-      </div>
-      <div class="room">
-        <div class="room-faces" data-room></div>
-        <div class="room-label">${E(id + '.sala', 'In sala stasera')}<span class="room-count" data-room-count></span></div>
       </div>
     </div>`;
 
@@ -76,14 +70,13 @@
     { id: 'oscar', title: 'Oscar', kind: 'todo', render: todo('oscar', 'Oscar del Mercoledì', 'Gli Oscar', 'Pifferaio Magico, Frequent Flyer, Club degli Assenti, Serate Intime, Inseparabili, Sconosciuti, Undicesimo Uomo, più un Oscar nuovo al posto del Game Master.') },
 
     // Atto 4 - L'app
-    { id: 'novita', title: 'La grande novità', kind: 'keynote', black: true, steps: 4, render: () => `
+    { id: 'novita', title: 'La grande novità', kind: 'keynote', black: true, steps: 3, render: () => `
       <div class="lines">
         <p class="kl small" data-at="1" data-edit="novita.riga1">Prima di andare avanti.</p>
         <p class="kl" data-at="2" data-edit="novita.riga2">Quest'anno c'è stata <em>una grande novità</em>.</p>
-        <p class="kl" data-at="3" data-edit="novita.riga3">Ma non vi dico cos'è.</p>
       </div>
-      <div class="mystery" data-at="4" aria-hidden="true"><span>?</span></div>
-      <div class="mystery-cap" data-at="4" data-edit="novita.didascalia">Spegnete le luci</div>` },
+      <div class="mystery" data-at="3" aria-hidden="true"><span>?</span></div>
+      <div class="mystery-cap" data-at="3" data-edit="novita.didascalia">Spegnete le luci</div>` },
     { id: 'showcase', title: 'Video dell\'app MXLV', kind: 'video', black: true, video: true, render: video('gala/media/app-showcase.mp4', 'L\'app MXLV') },
     { id: 'comevota', title: 'Come si vota', kind: 'howto', render: () => `<div class="inner">
       <div>
@@ -94,7 +87,10 @@
           <li>${E('comevota.passo3', 'Quando compare la domanda, vota')}</li>
         </ol>
       </div>
-      <div class="qr-box"><div class="qr" id="qr"></div><span>picciorra.github.io/mxlv</span></div>
+      <div class="room">
+        <div class="room-faces" data-room></div>
+        <div class="room-label"><span class="room-count" data-room-count></span>${E('comevota.collegati', 'collegati')}</div>
+      </div>
     </div>` },
     { id: 'prova', title: 'Votazione di prova', kind: 'poll', poll: { q: 'Siete pronti a votare?', options: ['Sì', 'Sì, ma ho già bevuto', 'Non ho capito niente'] } },
     { id: 'regolamento', title: 'Votazioni sul regolamento', kind: 'todo', render: todo('regolamento', 'Votazioni', 'Votazioni sul regolamento', 'Le domande le scrive Mattia: regolamento del mercoledì e gioco in generale. Una slide di voto per domanda.') },
@@ -215,12 +211,13 @@
     box.closest('.room').hidden = !names.length;
     if (box.dataset.names !== names.join('|')) {
       box.dataset.names = names.join('|');
-      box.innerHTML = names.map((n) => `<div class="room-face" data-n="${esc(n)}" title="${esc(firstName(n))}">${avatar(n)}</div>`).join('');
+      box.innerHTML = names.map((n) => `<div class="room-face" data-n="${esc(n)}"><span class="rf-img">${avatar(n)}</span><span class="rf-name">${esc(firstName(n))}</span></div>`).join('');
     }
     let on = 0;
     box.querySelectorAll('.room-face').forEach((f) => { const lit = st.seen.has(f.dataset.n); f.classList.toggle('on', lit); if (lit) on++; });
     const cnt = root.querySelector('[data-room-count]');
     if (cnt) cnt.textContent = `${on} su ${names.length}`;
+    box.closest('.room').classList.toggle('full', on === names.length && on > 0);
   }
 
   async function onTexts() {
@@ -534,8 +531,8 @@
       el.querySelectorAll('[data-at]').forEach((x) => {
         const at = +x.dataset.at;
         const isLine = x.classList.contains('kl');
-        x.classList.toggle('show', st.step >= at && !(isLine && st.step >= 4));
-        x.classList.toggle('gone', isLine && st.step >= 4);
+        x.classList.toggle('show', st.step >= at && !(isLine && st.step >= s.steps));
+        x.classList.toggle('gone', isLine && st.step >= s.steps);
       });
     }
   }
@@ -575,10 +572,6 @@
       const v = el.querySelector('video');
       v.addEventListener('error', () => { v.hidden = true; el.querySelector('.missing').hidden = false; });
       setTimeout(() => { if (st.el === el) v.play().catch(() => {}); }, 350);
-    }
-    if (s.kind === 'howto' && window.QRCode) {
-      // eslint-disable-next-line no-new
-      new window.QRCode(el.querySelector('#qr'), { text: APP_GALA_URL, width: 420, height: 420, colorDark: '#0D0F12', colorLight: '#ffffff' });
     }
     if (s.kind === 'poll') enterPoll(s).then(reportState);
     if (s.kind === 'recap') paintRecap();

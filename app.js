@@ -18,7 +18,6 @@ const START_HOUR = 20; // le attività iniziano dalle 20:00
 const END_HOUR = 1;    // e finiscono entro l'1:00 del giovedì
 
 const $content = document.getElementById('content');
-const $scroller = document.getElementById('scroller');
 const $refresh = document.getElementById('refresh');
 const $tabs = [...document.querySelectorAll('.tabbar a')];
 
@@ -624,9 +623,9 @@ function bindChartRange() {
   $content.querySelectorAll('[data-range]').forEach((b) => b.addEventListener('click', () => {
     chartRange = b.dataset.range;
     try { localStorage.setItem('mxlv-chart-range', chartRange); } catch (e) { /* niente */ }
-    const y = $scroller.scrollTop;
+    const y = window.scrollY;
     render();
-    $scroller.scrollTop = y;
+    window.scrollTo(0, y);
   }));
 }
 
@@ -1349,17 +1348,17 @@ function emojiRain() {
     hint.classList.toggle('ready', ready);
   };
   window.addEventListener('touchstart', (e) => {
-    if ($scroller.scrollTop > 0 || e.touches.length !== 1 || e.target.closest('.fig, input')) { startY = null; return; }
+    if (window.scrollY > 0 || e.touches.length !== 1 || e.target.closest('.fig, input')) { startY = null; return; }
     startY = e.touches[0].clientY; pulled = 0;
   }, { passive: true });
   window.addEventListener('touchmove', (e) => {
     if (startY === null) return;
     pulled = e.touches[0].clientY - startY;
-    showHint($scroller.scrollTop <= 0 ? pulled : 0);
+    showHint(window.scrollY <= 0 ? pulled : 0);
   }, { passive: true });
   window.addEventListener('touchend', () => {
     showHint(0);
-    if (startY !== null && pulled > PULL && $scroller.scrollTop <= 0 && Date.now() - rainAt > 2500) {
+    if (startY !== null && pulled > PULL && window.scrollY <= 0 && Date.now() - rainAt > 2500) {
       rainAt = Date.now();
       emojiRain();
       refresh();
@@ -1402,7 +1401,7 @@ document.addEventListener('click', (e) => {
 document.addEventListener('touchstart', () => {}, { passive: true });
 
 if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
-const toTop = () => { $scroller.scrollTop = 0; window.scrollTo(0, 0); };
+const toTop = () => { window.scrollTo(0, 0); document.documentElement.scrollTop = 0; document.body.scrollTop = 0; };
 window.addEventListener('hashchange', () => {
   inAppNavs++;
   toTop();

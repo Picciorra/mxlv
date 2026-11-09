@@ -415,7 +415,15 @@
     st.i = Math.max(0, Math.min(SLIDES.length - 1, i));
     st.step = step;
     const s = SLIDES[st.i];
-    const old = stage.querySelector('.slide');
+    // Prima esce la slide vecchia, poi entra la nuova: mai due slide visibili insieme.
+    // Se si va avanti veloce, quelle ancora in uscita spariscono subito.
+    stage.querySelectorAll('.slide').forEach((o) => {
+      o.querySelectorAll('video, audio').forEach((m) => { try { m.pause(); m.removeAttribute('src'); m.load(); } catch (e) { /* niente */ } });
+      if (o.classList.contains('leaving')) { o.remove(); return; }
+      o.classList.remove('in');
+      o.classList.add('leaving');
+      setTimeout(() => o.remove(), 400);
+    });
     const el = document.createElement('section');
     el.className = `slide ${s.kind}${s.kind === 'poll' ? ' vote' : ''}${s.black ? ' black' : ''}`;
     el.setAttribute('aria-label', s.title);
@@ -423,12 +431,11 @@
     stage.appendChild(el);
     st.el = el;
     requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('in')));
-    if (old) { old.classList.remove('in'); setTimeout(() => old.remove(), 750); }
 
     if (s.kind === 'video') {
       const v = el.querySelector('video');
       v.addEventListener('error', () => { v.hidden = true; el.querySelector('.missing').hidden = false; });
-      v.play().catch(() => {});
+      setTimeout(() => { if (st.el === el) v.play().catch(() => {}); }, 350);
     }
     if (s.kind === 'howto' && window.QRCode) {
       // eslint-disable-next-line no-new

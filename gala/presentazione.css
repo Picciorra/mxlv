@@ -25,8 +25,9 @@ body { background: var(--black); color: var(--text); font-family: var(--font); o
 .stage { width: 1920px; height: 1080px; position: absolute; left: 50%; top: 50%; transform-origin: center center; background: var(--bg); overflow: hidden; }
 .stage.cursorless { cursor: none; }
 
-.slide { position: absolute; inset: 0; opacity: 0; transition: opacity .7s ease; }
-.slide.in { opacity: 1; }
+.slide { position: absolute; inset: 0; opacity: 0; background: var(--bg); }
+.slide.in { opacity: 1; transition: opacity .5s ease .35s; }
+.slide.leaving { opacity: 0; transition: opacity .3s ease; pointer-events: none; }
 .slide.black { background: var(--black); }
 
 /* Etichette */

@@ -1162,7 +1162,7 @@ const waLink = (text) => 'https://wa.me/?text=' + encodeURIComponent(text);
 
 const UTIL_ITEMS = [
   { href: '#regolamento', title: 'Regolamento MXLV 2026', sub: 'Regole in breve e i 7 articoli', icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5v14z"></path><path d="M6.5 17A2.5 2.5 0 0 0 4 19.5 2.5 2.5 0 0 0 6.5 22H20v-5"></path></svg>' },
-  { href: '#gala', title: 'Gran Galà', sub: 'In arrivo per la serata di fine anno', icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l2.9 6.26L22 9.27l-5.2 4.87L18.18 22 12 18.56 5.82 22 7.2 14.14 2 9.27l7.1-1.01L12 2z"></path></svg>' }
+  { href: '#gala', title: 'Gran Galà', sub: 'Le votazioni in diretta della serata', icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l2.9 6.26L22 9.27l-5.2 4.87L18.18 22 12 18.56 5.82 22 7.2 14.14 2 9.27l7.1-1.01L12 2z"></path></svg>' }
 ];
 
 function renderUtility() {
@@ -1181,11 +1181,144 @@ function renderUtility() {
   setupAnthem();
 }
 
+// =====================================================================
+// Gran Galà: votazioni in diretta collegate alla presentazione
+// =====================================================================
+
+const SUPABASE_URL = 'https://kzxufyulcxsocvtdvget.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_f046qLhQ1n5Wqu3DKkwGDA_1kFCdSc_'; // chiave pubblica: il database accetta solo voti validi
+const VOTER_KEY = 'mxlv-voter';
+let sbClient = null;
+let sbLoading = null;
+let pageCleanup = null;
+const gala = { voters: [], poll: null, votes: [], error: false, loaded: false, sending: false };
+
+function loadSupabase() {
+  if (sbClient) return Promise.resolve(sbClient);
+  if (!sbLoading) {
+    sbLoading = new Promise((resolve, reject) => {
+      const sc = document.createElement('script');
+      sc.src = 'lib/supabase.js?v=2.45.4';
+      sc.onload = () => { sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY); resolve(sbClient); };
+      sc.onerror = () => { sbLoading = null; reject(new Error('supabase')); };
+      document.head.appendChild(sc);
+    });
+  }
+  return sbLoading;
+}
+
+function getVoter() { try { return localStorage.getItem(VOTER_KEY) || ''; } catch (e) { return ''; } }
+function setVoter(v) { try { if (v) localStorage.setItem(VOTER_KEY, v); else localStorage.removeItem(VOTER_KEY); } catch (e) { /* niente */ } }
+
+async function galaFetch() {
+  const sb = await loadSupabase();
+  const [vr, pr] = await Promise.all([
+    gala.voters.length ? Promise.resolve({ data: gala.voters }) : sb.from('voters').select('name').order('ord'),
+    sb.from('polls').select('id,question,options,status').eq('status', 'open').maybeSingle()
+  ]);
+  if (vr.error || pr.error) throw new Error('fetch');
+  gala.voters = vr.data;
+  gala.poll = pr.data;
+  if (gala.poll) {
+    const { data, error } = await sb.from('votes').select('voter,choice').eq('poll_id', gala.poll.id);
+    if (error) throw error;
+    gala.votes = data;
+  } else {
+    gala.votes = [];
+  }
+  gala.error = false;
+  gala.loaded = true;
+}
+
+function galaBody() {
+  const me = getVoter();
+  if (!gala.loaded && !gala.error) return '<div class="skeleton row-skel"></div><div class="skeleton row-skel"></div>';
+  if (gala.error) return '<div class="note"><span>Non riesco a collegarmi alle votazioni. Controlla la connessione e riprova.</span><button type="button" id="gala-retry">Riprova</button></div>';
+  if (!me || !gala.voters.some((v) => v.name === me)) {
+    return `<section class="section">
+      <h2 class="section-title">Chi sei?</h2>
+      <p class="muted small gala-p">Scegli il tuo nome una volta sola: serve per votare, un voto a testa.</p>
+      <div class="player-picker gala-who" role="group" aria-label="Scegli il tuo nome">
+        ${gala.voters.map((v) => `<button type="button" class="pick" data-voter="${esc(v.name)}">${avatar(v.name)}<span>${esc(firstName(v.name))}</span></button>`).join('')}
+      </div>
+    </section>`;
+  }
+  const meBar = `<div class="gala-me">${avatar(me)}<span>Voti come <b>${esc(firstName(me))}</b></span><button type="button" class="gala-change" data-voter="">Cambia</button></div>`;
+  const p = gala.poll;
+  if (!p) {
+    return `${meBar}
+    <div class="card gala-wait">
+      <span class="live-dot" aria-hidden="true"></span>
+      <div><b>In attesa della prossima domanda</b><p class="muted small">Quando parte una votazione sulla TV, la domanda compare qui da sola.</p></div>
+    </div>`;
+  }
+  const mine = gala.votes.find((v) => v.voter === me);
+  const total = gala.voters.length;
+  return `${meBar}
+  <section class="card gala-poll" aria-live="polite">
+    <span class="gala-live"><span class="live-dot" aria-hidden="true"></span>Votazione aperta</span>
+    <h2 class="gala-q">${esc(p.question)}</h2>
+    <div class="gala-opts">
+      ${p.options.map((o, i) => `<button type="button" class="gala-opt${mine && mine.choice === i ? ' on' : ''}" data-choice="${i}" aria-pressed="${!!(mine && mine.choice === i)}" ${gala.sending ? 'disabled' : ''}>
+        <span>${esc(o)}</span>${mine && mine.choice === i ? `<span class="gala-check" aria-hidden="true">✓</span>` : ''}
+      </button>`).join('')}
+    </div>
+    <p class="muted small gala-p">${mine ? 'Hai votato. Puoi cambiare idea finché la votazione è aperta.' : 'Tocca una risposta per votare.'}</p>
+    <p class="gala-count"><b>${gala.votes.length}</b> su ${total} hanno votato</p>
+  </section>`;
+}
+
+function paintGala() {
+  const box = document.getElementById('gala-body');
+  if (!box) return;
+  box.innerHTML = galaBody();
+  box.querySelectorAll('[data-voter]').forEach((b) => b.addEventListener('click', () => { setVoter(b.dataset.voter); paintGala(); }));
+  const retry = box.querySelector('#gala-retry');
+  if (retry) retry.addEventListener('click', () => { gala.error = false; paintGala(); galaFetch().then(paintGala).catch(() => { gala.error = true; paintGala(); }); });
+  box.querySelectorAll('[data-choice]').forEach((b) => b.addEventListener('click', async () => {
+    if (!gala.poll || gala.sending) return;
+    const me = getVoter();
+    const choice = +b.dataset.choice;
+    gala.sending = true;
+    const prev = gala.votes;
+    gala.votes = [...gala.votes.filter((v) => v.voter !== me), { voter: me, choice }]; // si vede subito
+    paintGala();
+    try {
+      const { error } = await sbClient.rpc('cast_vote', { p_poll: gala.poll.id, p_voter: me, p_choice: choice });
+      if (error) throw error;
+    } catch (e) {
+      gala.votes = prev;
+      await galaFetch().catch(() => {});
+    }
+    gala.sending = false;
+    paintGala();
+  }));
+}
+
 function renderGala() {
   $content.innerHTML = `
     ${backLink('#utility', 'Utility')}
-    <div class="title-block"><h1>Gran Galà</h1><p class="muted">Stagione 2026</p></div>
-    <div class="note">In arrivo per la serata di fine anno.</div>`;
+    <div class="title-block"><h1>Gran Galà</h1><p class="muted">Votazioni in diretta</p></div>
+    <div id="gala-body" class="gala-body"></div>`;
+  paintGala();
+
+  let channel = null;
+  let alive = true;
+  const reload = () => galaFetch().then(() => alive && paintGala()).catch(() => { if (alive) { gala.error = true; paintGala(); } });
+  const onVisible = () => { if (document.visibilityState === 'visible') reload(); };
+  reload().then(() => {
+    if (!alive || !sbClient) return;
+    channel = sbClient.channel('gala-' + Date.now())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'polls' }, reload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'votes' }, reload)
+      .subscribe();
+  });
+  document.addEventListener('visibilitychange', onVisible);
+  pageCleanup = () => {
+    alive = false;
+    document.removeEventListener('visibilitychange', onVisible);
+    if (channel && sbClient) sbClient.removeChannel(channel);
+  };
 }
 
 function renderRegolamento() {
@@ -1258,6 +1391,7 @@ function currentRoute() {
 function render() {
   clearInterval(countdownTimer);
   if (figurinaCleanup) { figurinaCleanup(); figurinaCleanup = null; }
+  if (pageCleanup) { pageCleanup(); pageCleanup = null; }
   const route = currentRoute();
   document.title = `MXLV - ${route.title}`;
   $tabs.forEach((a) => {

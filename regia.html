@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>MXLV - Regia votazioni</title>
+  <link rel="stylesheet" href="styles.css?v=30">
+  <style>
+    body { position: static; }
+    .regia { max-width: 1100px; margin: 0 auto; padding: 24px 20px 60px; display: flex; flex-direction: column; gap: 22px; }
+    .regia h1 { margin: 0; font-family: var(--display); font-size: 34px; text-transform: uppercase; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    input, textarea { font: inherit; color: var(--text); background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+    textarea { width: 100%; min-height: 96px; resize: vertical; }
+    .btn { min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); color: var(--text); font: inherit; font-weight: 600; font-size: 14px; cursor: pointer; }
+    .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+    .btn.danger { color: #FF6B6B; }
+    .btn:active { opacity: .7; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+    .panel { padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+    .poll { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--line); border-radius: 12px; }
+    .poll.open { border-color: var(--accent); }
+    .poll .q { font-weight: 600; }
+    .st { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+    .poll.open .st { color: var(--accent); }
+    .stage { padding: 26px; display: flex; flex-direction: column; gap: 18px; min-height: 360px; }
+    .stage .q { font-family: var(--display); font-size: 40px; line-height: 1.02; text-transform: uppercase; margin: 0; }
+    .counter { font-family: var(--display); font-size: 64px; line-height: 1; color: var(--accent); }
+    .counter small { font-size: 24px; color: var(--muted); }
+    .bar { display: flex; flex-direction: column; gap: 6px; }
+    .bar .lbl { display: flex; justify-content: space-between; font-weight: 600; }
+    .bar .track { height: 14px; border-radius: 8px; background: var(--surface-2); overflow: hidden; }
+    .bar .fill { height: 100%; background: var(--accent); width: 0; transition: width .4s ease; }
+    .who { display: flex; gap: 6px; flex-wrap: wrap; }
+    .who span { font-size: 13px; padding: 4px 10px; border-radius: 999px; background: var(--surface-2); }
+    .err { color: #FF6B6B; font-size: 14px; min-height: 18px; }
+  </style>
+</head>
+<body>
+  <div class="regia">
+    <div class="row" style="justify-content: space-between">
+      <h1>Regia votazioni</h1>
+      <div class="row">
+        <input id="key" type="password" placeholder="Chiave regia" autocomplete="off">
+        <button class="btn" id="save-key">Usa chiave</button>
+        <span id="key-state" class="st"></span>
+      </div>
+    </div>
+    <p class="err" id="err"></p>
+
+    <div class="grid">
+      <section class="card stage" id="stage" aria-live="polite"></section>
+
+      <div style="display:flex; flex-direction:column; gap:18px">
+        <section class="card panel">
+          <span class="st">Nuova domanda</span>
+          <input id="new-q" placeholder="Domanda">
+          <textarea id="new-o" placeholder="Una risposta per riga (da 2 a 8)"></textarea>
+          <div class="row"><button class="btn primary" id="create">Crea</button></div>
+        </section>
+        <section class="card panel">
+          <span class="st">Domande</span>
+          <div id="list" style="display:flex; flex-direction:column; gap:10px"></div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <script src="lib/supabase.js?v=2.45.4"></script>
+  <script>
+    const SUPABASE_URL = 'https://kzxufyulcxsocvtdvget.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_f046qLhQ1n5Wqu3DKkwGDA_1kFCdSc_';
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const $ = (id) => document.getElementById(id);
+    const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    let key = '';
+    try { key = localStorage.getItem('mxlv-regia-key') || ''; } catch (e) { /* niente */ }
+    $('key').value = key;
+    let voters = [], polls = [], votes = [];
+
+    async function checkKey() {
+      if (!key) { $('key-state').textContent = 'Nessuna chiave'; return; }
+      const { data } = await sb.rpc('regia_check', { p_key: key });
+      $('key-state').textContent = data ? 'Chiave ok' : 'Chiave sbagliata';
+      $('key-state').style.color = data ? 'var(--accent)' : '#FF6B6B';
+    }
+    $('save-key').onclick = () => {
+      key = $('key').value.trim();
+      try { localStorage.setItem('mxlv-regia-key', key); } catch (e) { /* niente */ }
+      checkKey();
+    };
+
+    async function call(fn, args) {
+      $('err').textContent = '';
+      const { data, error } = await sb.rpc(fn, { p_key: key, ...args });
+      if (error) $('err').textContent = error.message;
+      await load();
+      return data;
+    }
+
+    async function load() {
+      const [v, p] = await Promise.all([
+        voters.length ? { data: voters } : sb.from('voters').select('name').order('ord'),
+        sb.from('polls').select('*').order('ord').order('id')
+      ]);
+      voters = v.data || [];
+      polls = p.data || [];
+      const open = polls.find((x) => x.status === 'open');
+      const shown = open || [...polls].filter((x) => x.status === 'closed').sort((a, b) => new Date(b.closed_at) - new Date(a.closed_at))[0];
+      votes = [];
+      if (shown) {
+        const r = await sb.from('votes').select('voter,choice').eq('poll_id', shown.id);
+        votes = r.data || [];
+      }
+      paint(shown);
+    }
+
+    function paint(shown) {
+      // Palco: quello che la presentazione dovrà mostrare
+      if (!shown) {
+        $('stage').innerHTML = '<span class="st">Nessuna votazione</span><p class="muted">Apri una domanda dalla lista.</p>';
+      } else {
+        const counts = shown.options.map((_, i) => votes.filter((v) => v.choice === i).length);
+        const max = Math.max(1, ...counts);
+        $('stage').innerHTML = `
+          <span class="st" style="color:${shown.status === 'open' ? 'var(--accent)' : 'var(--muted)'}">${shown.status === 'open' ? 'Votazione aperta' : 'Votazione chiusa'}</span>
+          <h2 class="q">${esc(shown.question)}</h2>
+          <div class="counter">${votes.length} <small>su ${voters.length} hanno votato</small></div>
+          ${shown.options.map((o, i) => `<div class="bar">
+            <div class="lbl"><span>${esc(o)}</span><span>${counts[i]}</span></div>
+            <div class="track"><div class="fill" style="width:${(counts[i] / max) * 100}%"></div></div>
+          </div>`).join('')}
+          <div class="who">${votes.map((v) => `<span>${esc(v.voter.split(' ')[0])}</span>`).join('')}</div>`;
+      }
+      // Lista domande
+      $('list').innerHTML = polls.length ? polls.map((p) => `
+        <div class="poll ${p.status}">
+          <span class="st">${{ draft: 'In attesa', open: 'Aperta', closed: 'Chiusa' }[p.status]}</span>
+          <span class="q">${esc(p.question)}</span>
+          <span class="muted small">${p.options.map(esc).join(' · ')}</span>
+          <div class="row">
+            ${p.status !== 'open' ? `<button class="btn primary" data-act="regia_open" data-id="${p.id}">Apri</button>` : `<button class="btn primary" data-act="regia_close" data-id="${p.id}">Chiudi</button>`}
+            <button class="btn" data-act="regia_reset" data-id="${p.id}">Azzera voti</button>
+            <button class="btn danger" data-act="regia_delete" data-id="${p.id}">Elimina</button>
+          </div>
+        </div>`).join('') : '<p class="muted">Nessuna domanda.</p>';
+      $('list').querySelectorAll('[data-act]').forEach((b) => b.onclick = () => {
+        if (b.dataset.act === 'regia_delete' && !confirm('Eliminare questa domanda e i suoi voti?')) return;
+        call(b.dataset.act, { p_poll: +b.dataset.id });
+      });
+    }
+
+    $('create').onclick = async () => {
+      const q = $('new-q').value.trim();
+      const opts = $('new-o').value.split('\n').map((s) => s.trim()).filter(Boolean);
+      if (!q || opts.length < 2) { $('err').textContent = 'Serve una domanda e almeno 2 risposte.'; return; }
+      await call('regia_create', { p_question: q, p_options: opts, p_ord: polls.length + 1 });
+      $('new-q').value = ''; $('new-o').value = '';
+    };
+
+    sb.channel('regia')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'polls' }, load)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'votes' }, load)
+      .subscribe();
+    checkKey();
+    load();
+  </script>
+</body>
+</html>

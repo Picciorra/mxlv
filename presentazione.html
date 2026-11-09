@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="gala/presentazione.css?v=5">
+  <link rel="stylesheet" href="gala/presentazione.css?v=6">
 </head>
 <body>
   <div class="viewport">
@@ -24,6 +24,14 @@
       <label class="start-label" for="pin">PIN regia</label>
       <input id="pin" class="start-pin" type="password" inputmode="numeric" autocomplete="off" maxlength="12" placeholder="••••">
       <p class="start-msg" id="start-msg">Con il PIN la presentazione si collega al telecomando e alle votazioni.</p>
+      <div class="start-audio" role="group" aria-label="Prova audio">
+        <span class="start-label">Prova audio</span>
+        <div class="start-audio-btns">
+          <button type="button" data-chime="-1">Sinistra</button>
+          <button type="button" data-chime="0">Tutte e due</button>
+          <button type="button" data-chime="1">Destra</button>
+        </div>
+      </div>
       <button type="button" class="start-go" id="start-go">Inizia il Galà</button>
       <button type="button" class="start-skip" id="start-skip">Continua senza collegamento</button>
     </div>
@@ -37,16 +45,24 @@
     </div>
   </div>
 
+  <div class="overview" id="overview" hidden>
+    <div class="ov-head"><b>Tutte le slide</b><span>Clicca una slide per andarci. O oppure Esc per chiudere.</span><button type="button" id="ov-close">Chiudi</button></div>
+    <div class="ov-grid"></div>
+  </div>
+  <div class="toast" id="toast" role="status" hidden></div>
+
   <nav class="hud" id="hud" aria-label="Controlli presentazione">
     <button type="button" id="hud-prev" aria-label="Slide precedente">◀</button>
     <select id="hud-jump" aria-label="Vai alla slide"></select>
     <button type="button" id="hud-next" aria-label="Slide successiva">▶</button>
+    <button type="button" id="hud-ov">Tutte le slide</button>
+    <button type="button" id="hud-edit">Modifica testi</button>
     <span class="hud-link" id="hud-link" title="Collegamento al telecomando"></span>
     <button type="button" id="hud-fs">Schermo intero</button>
   </nav>
 
   <script src="lib/supabase.js?v=2.45.4"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="gala/presentazione.js?v=4"></script>
+  <script src="gala/presentazione.js?v=6"></script>
 </body>
 </html>

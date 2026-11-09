@@ -1273,7 +1273,7 @@ function paintGala() {
   const box = document.getElementById('gala-body');
   if (!box) return;
   box.innerHTML = galaBody();
-  box.querySelectorAll('[data-voter]').forEach((b) => b.addEventListener('click', () => { setVoter(b.dataset.voter); paintGala(); }));
+  box.querySelectorAll('[data-voter]').forEach((b) => b.addEventListener('click', () => { setVoter(b.dataset.voter); trackMe(); paintGala(); }));
   const retry = box.querySelector('#gala-retry');
   if (retry) retry.addEventListener('click', () => { gala.error = false; paintGala(); galaFetch().then(paintGala).catch(() => { gala.error = true; paintGala(); }); });
   box.querySelectorAll('[data-choice]').forEach((b) => b.addEventListener('click', async () => {
@@ -1296,6 +1296,13 @@ function paintGala() {
   }));
 }
 
+let presence = null;
+function trackMe() {
+  const me = getVoter();
+  if (!presence) return;
+  if (me) presence.track({ name: me }).catch(() => {}); else presence.untrack().catch(() => {});
+}
+
 function renderGala() {
   $content.innerHTML = `
     ${backLink('#utility', 'Utility')}
@@ -1309,6 +1316,9 @@ function renderGala() {
   const onVisible = () => { if (document.visibilityState === 'visible') reload(); };
   reload().then(() => {
     if (!alive || !sbClient) return;
+    // Presenza: chi è su questa pagina si accende sulla copertina della presentazione
+    presence = sbClient.channel('gala-presenza', { config: { presence: { key: 'app-' + Math.random().toString(36).slice(2) } } });
+    presence.subscribe((status) => { if (status === 'SUBSCRIBED') trackMe(); });
     channel = sbClient.channel('gala-' + Date.now())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'polls' }, reload)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'votes' }, reload)
@@ -1319,6 +1329,7 @@ function renderGala() {
     alive = false;
     document.removeEventListener('visibilitychange', onVisible);
     if (channel && sbClient) sbClient.removeChannel(channel);
+    if (presence && sbClient) { sbClient.removeChannel(presence); presence = null; }
   };
 }
 

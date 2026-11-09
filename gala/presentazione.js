@@ -10,8 +10,7 @@
   const APP_GALA_URL = 'https://picciorra.github.io/mxlv/#gala';
   const PIN_STORE = 'mxlv-regia-pin';
   const POS_STORE = 'mxlv-gala-pos';
-  const SEASON_START = new Date(2026, 0, 7); // primo mercoledì della stagione
-
+  
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const firstName = (n) => n.split(' ')[0];
   const slug = (n) => firstName(n).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
@@ -30,30 +29,30 @@
   // Slide
   // ===================================================================
 
-  const cover = () => {
-    const weeks = Math.min(52, Math.floor((Date.now() - SEASON_START) / (7 * 864e5)) + 1);
-    const ticks = Array.from({ length: 52 }, (_, i) => `<div class="tick${i < weeks ? ' played' : ''}" style="--i:${i}"></div>`).join('');
-    return `<div class="glow" aria-hidden="true"></div>
+  // Ogni testo con data-edit="slide.campo" si può riscrivere dalla modalità modifica.
+  const E = (id, html, tag = 'span', cls = '') => `<${tag}${cls ? ` class="${cls}"` : ''} data-edit="${id}">${html}</${tag}>`;
+
+  // Copertina: sotto il titolo i Rembrandts si accendono quando aprono l'app (Utility > Gran Galà)
+  const cover = (id) => () => `<div class="glow" aria-hidden="true"></div>
     <div class="inner">
-      <div class="eyebrow">I Rembrandts presentano</div>
+      ${E(id + '.eyebrow', 'I Rembrandts presentano', 'div', 'eyebrow')}
       <div>
-        <h1>Gran Galà<span class="l2">MXLV 2026</span></h1>
-        <div class="sub"><span>Mercoledì x la Vita</span><span class="dot" aria-hidden="true"></span><span>23 dicembre 2026</span></div>
+        <h1>${E(id + '.titolo', 'Gran Galà')}<span class="l2" data-edit="${id}.titolo2">MXLV 2026</span></h1>
+        <div class="sub">${E(id + '.sub1', 'Mercoledì x la Vita')}<span class="dot" aria-hidden="true"></span>${E(id + '.sub2', '23 dicembre 2026')}</div>
       </div>
-      <div class="season">
-        <div class="ticks" aria-hidden="true">${ticks}</div>
-        <div class="legend"><span>Gennaio</span><span>52 mercoledì, una stagione</span><span>Dicembre</span></div>
+      <div class="room">
+        <div class="room-faces" data-room></div>
+        <div class="room-label">${E(id + '.sala', 'In sala stasera')}<span class="room-count" data-room-count></span></div>
       </div>
     </div>`;
-  };
 
-  const divider = (num, title) => () => `<div class="inner"><div class="num">${esc(num)}</div><h2>${esc(title)}</h2><div class="bar"></div></div>`;
+  const divider = (id, num, title) => () => `<div class="inner">${E(id + '.num', esc(num), 'div', 'num')}${E(id + '.titolo', esc(title), 'h2')}<div class="bar"></div></div>`;
 
-  const todo = (act, title, note) => () => `<div class="inner">
-    <div class="eyebrow accent">${esc(act)}</div>
-    <h2>${esc(title)}</h2>
+  const todo = (id, act, title, note) => () => `<div class="inner">
+    ${E(id + '.eyebrow', esc(act), 'div', 'eyebrow accent')}
+    ${E(id + '.titolo', esc(title), 'h2')}
     <span class="tag">Da preparare</span>
-    ${note ? `<p>${esc(note)}</p>` : ''}
+    ${note ? E(id + '.nota', esc(note), 'p') : ''}
   </div>`;
 
   const video = (src, label) => () => `<video src="${src}" playsinline preload="auto"></video>
@@ -61,67 +60,67 @@
 
   const SLIDES = [
     // Atto 1 - Apertura
-    { title: 'Copertina', kind: 'cover', render: cover },
-    { title: 'Inno ufficiale', kind: 'video', black: true, render: video('gala/media/inno.mp4', 'Inno ufficiale') },
-    { title: 'Brindisi ai Rembrandts', kind: 'cover', render: cover },
+    { id: 'copertina', title: 'Copertina', kind: 'cover', render: cover('copertina') },
+    { id: 'inno', title: 'Inno ufficiale', kind: 'video', black: true, video: true, render: video('gala/media/inno.mp4', 'Inno ufficiale') },
+    { id: 'brindisi', title: 'Brindisi ai Rembrandts', kind: 'cover', render: cover('brindisi') },
 
     // Atto 2 - La stagione
-    { title: 'Atto 2 - La stagione', kind: 'divider', render: divider('Atto 2', 'La stagione') },
-    { title: 'I numeri dell\'anno', kind: 'todo', render: todo('La stagione', 'I numeri dell\'anno', 'Serate giocate, presenze totali, Cene Stirate, Mister X. Niente AR né posizioni.') },
-    { title: 'Catalogo delle serate', kind: 'todo', render: todo('La stagione', 'Catalogo delle serate') },
-    { title: 'Statistiche', kind: 'todo', render: todo('La stagione', 'Statistiche', 'L\'Età dell\'Oro, il Grande Crollo estivo e le altre curiosità.') },
-    { title: 'Confronto con gli anni passati', kind: 'todo', render: todo('La stagione', 'Confronto con gli anni passati', '2024, 2025 e 2026 a livello di gruppo.') },
+    { id: 'atto2', title: 'Atto 2 - La stagione', kind: 'divider', render: divider('atto2', 'Atto 2', 'La stagione') },
+    { id: 'numeri', title: 'I numeri dell\'anno', kind: 'todo', render: todo('numeri', 'La stagione', 'I numeri dell\'anno', 'Serate giocate, presenze totali, Cene Stirate, Mister X. Niente AR né posizioni.') },
+    { id: 'catalogo', title: 'Catalogo delle serate', kind: 'todo', render: todo('catalogo', 'La stagione', 'Catalogo delle serate') },
+    { id: 'statistiche', title: 'Statistiche', kind: 'todo', render: todo('statistiche', 'La stagione', 'Statistiche', 'L\'Età dell\'Oro, il Grande Crollo estivo e le altre curiosità.') },
+    { id: 'confronto', title: 'Confronto con gli anni passati', kind: 'todo', render: todo('confronto', 'La stagione', 'Confronto con gli anni passati', '2024, 2025 e 2026 a livello di gruppo.') },
 
     // Atto 3 - Oscar
-    { title: 'Atto 3 - Oscar del Mercoledì', kind: 'divider', render: divider('Atto 3', 'Oscar del Mercoledì') },
-    { title: 'Oscar', kind: 'todo', render: todo('Oscar del Mercoledì', 'Gli Oscar', 'Pifferaio Magico, Frequent Flyer, Club degli Assenti, Serate Intime, Inseparabili, Sconosciuti, Undicesimo Uomo, più un Oscar nuovo al posto del Game Master.') },
+    { id: 'atto3', title: 'Atto 3 - Oscar del Mercoledì', kind: 'divider', render: divider('atto3', 'Atto 3', 'Oscar del Mercoledì') },
+    { id: 'oscar', title: 'Oscar', kind: 'todo', render: todo('oscar', 'Oscar del Mercoledì', 'Gli Oscar', 'Pifferaio Magico, Frequent Flyer, Club degli Assenti, Serate Intime, Inseparabili, Sconosciuti, Undicesimo Uomo, più un Oscar nuovo al posto del Game Master.') },
 
     // Atto 4 - L'app
-    { title: 'La grande novità', kind: 'keynote', black: true, steps: 4, render: () => `
+    { id: 'novita', title: 'La grande novità', kind: 'keynote', black: true, steps: 4, render: () => `
       <div class="lines">
-        <p class="kl small" data-at="1">Prima di andare avanti.</p>
-        <p class="kl" data-at="2">Quest'anno c'è stata <em>una grande novità</em>.</p>
-        <p class="kl" data-at="3">Ma non vi dico cos'è.</p>
+        <p class="kl small" data-at="1" data-edit="novita.riga1">Prima di andare avanti.</p>
+        <p class="kl" data-at="2" data-edit="novita.riga2">Quest'anno c'è stata <em>una grande novità</em>.</p>
+        <p class="kl" data-at="3" data-edit="novita.riga3">Ma non vi dico cos'è.</p>
       </div>
       <div class="mystery" data-at="4" aria-hidden="true"><span>?</span></div>
-      <div class="mystery-cap" data-at="4">Spegnete le luci</div>` },
-    { title: 'Video dell\'app MXLV', kind: 'video', black: true, render: video('gala/media/app-showcase.mp4', 'L\'app MXLV') },
-    { title: 'Come si vota', kind: 'howto', render: () => `<div class="inner">
+      <div class="mystery-cap" data-at="4" data-edit="novita.didascalia">Spegnete le luci</div>` },
+    { id: 'showcase', title: 'Video dell\'app MXLV', kind: 'video', black: true, video: true, render: video('gala/media/app-showcase.mp4', 'L\'app MXLV') },
+    { id: 'comevota', title: 'Come si vota', kind: 'howto', render: () => `<div class="inner">
       <div>
-        <h2>Tirate fuori il telefono</h2>
+        ${E('comevota.titolo', 'Tirate fuori il telefono', 'h2')}
         <ol>
-          <li><span>Apri l'app MXLV, <b>Utility</b>, <b>Gran Galà</b></span></li>
-          <li><span>Scegli il tuo nome, una volta sola</span></li>
-          <li><span>Quando compare la domanda, vota</span></li>
+          <li>${E('comevota.passo1', 'Apri l\'app MXLV, <b>Utility</b>, <b>Gran Galà</b>')}</li>
+          <li>${E('comevota.passo2', 'Scegli il tuo nome, una volta sola')}</li>
+          <li>${E('comevota.passo3', 'Quando compare la domanda, vota')}</li>
         </ol>
       </div>
       <div class="qr-box"><div class="qr" id="qr"></div><span>picciorra.github.io/mxlv</span></div>
     </div>` },
-    { title: 'Votazione di prova', kind: 'poll', poll: { q: 'Siete pronti a votare?', options: ['Sì', 'Sì, ma ho già bevuto', 'Non ho capito niente'] } },
-    { title: 'Votazioni sul regolamento', kind: 'todo', render: todo('Votazioni', 'Votazioni sul regolamento', 'Le domande le scrive Mattia: regolamento del mercoledì e gioco in generale. Una slide di voto per domanda.') },
-    { title: 'Fuori Gianluca? Dentro Peppe?', kind: 'todo', render: todo('Votazioni', 'Fuori Gianluca? Dentro Peppe?') },
+    { id: 'prova', title: 'Votazione di prova', kind: 'poll', poll: { q: 'Siete pronti a votare?', options: ['Sì', 'Sì, ma ho già bevuto', 'Non ho capito niente'] } },
+    { id: 'regolamento', title: 'Votazioni sul regolamento', kind: 'todo', render: todo('regolamento', 'Votazioni', 'Votazioni sul regolamento', 'Le domande le scrive Mattia: regolamento del mercoledì e gioco in generale. Una slide di voto per domanda.') },
+    { id: 'peppe', title: 'Fuori Gianluca? Dentro Peppe?', kind: 'todo', render: todo('peppe', 'Votazioni', 'Fuori Gianluca? Dentro Peppe?') },
 
     // Atto 5 - Rembrandt Awards
-    { title: 'Passaggio a Davide', kind: 'handoff', render: () => `<div class="inner">
+    { id: 'davide', title: 'Passaggio a Davide', kind: 'handoff', render: () => `<div class="inner">
       <div class="face">${avatar('Davide Molinaro')}</div>
-      <h2>Signore e signori,<br><span>Davide Molinaro</span></h2>
+      <h2>${E('davide.riga1', 'Signore e signori,')}<br><span data-edit="davide.nome">Davide Molinaro</span></h2>
     </div>` },
-    { title: 'Atto 5 - Rembrandt Awards', kind: 'divider', render: divider('Atto 5', 'Rembrandt Awards') },
-    { title: 'Rembrandt Awards', kind: 'todo', render: todo('Rembrandt Awards', 'Le categorie', 'Vincitori decisi prima, la slide fa solo nomination e rivelazione. Qui vanno anche lo sciopero di Malese e Mykonos.') },
-    { title: 'Manu Rap', kind: 'todo', render: todo('Rembrandt Awards', 'Manu Rap', 'Base e temi del rap.') },
-    { title: 'MVP della stagione', kind: 'poll', hideLive: true, people: true, poll: { q: 'Chi è l\'MVP della stagione?', options: REMBRANDTS } },
+    { id: 'atto5', title: 'Atto 5 - Rembrandt Awards', kind: 'divider', render: divider('atto5', 'Atto 5', 'Rembrandt Awards') },
+    { id: 'awards', title: 'Rembrandt Awards', kind: 'todo', render: todo('awards', 'Rembrandt Awards', 'Le categorie', 'Vincitori decisi prima, la slide fa solo nomination e rivelazione. Qui vanno anche lo sciopero di Malese e Mykonos.') },
+    { id: 'manurap', title: 'Manu Rap', kind: 'todo', render: todo('manurap', 'Rembrandt Awards', 'Manu Rap', 'Base e temi del rap.') },
+    { id: 'mvp', title: 'MVP della stagione', kind: 'poll', hideLive: true, people: true, poll: { q: 'Chi è l\'MVP della stagione?', options: REMBRANDTS } },
 
     // Atto 6 - Premiazione
-    { title: 'Atto 6 - Premiazione', kind: 'divider', render: divider('Atto 6', 'La classifica') },
-    { title: 'Premiazione', kind: 'todo', render: todo('Premiazione', 'Dal decimo al primo', 'Squalo, patatine, battaglia dall\'8° al 4°, podio con FE!N sul drop.') },
+    { id: 'atto6', title: 'Atto 6 - Premiazione', kind: 'divider', render: divider('atto6', 'Atto 6', 'La classifica') },
+    { id: 'premiazione', title: 'Premiazione', kind: 'todo', render: todo('premiazione', 'Premiazione', 'Dal decimo al primo', 'Squalo, patatine, battaglia dall\'8° al 4°, podio con FE!N sul drop.') },
 
     // Atto 7 - Fioretti
-    { title: 'Atto 7 - Fioretti', kind: 'divider', render: divider('Atto 7', 'I fioretti') },
-    { title: 'Fioretti', kind: 'todo', render: todo('Fioretti', 'Mr. Consistenza, Mr. Tarallo e i fioretti 2027') },
+    { id: 'atto7', title: 'Atto 7 - Fioretti', kind: 'divider', render: divider('atto7', 'Atto 7', 'I fioretti') },
+    { id: 'fioretti', title: 'Fioretti', kind: 'todo', render: todo('fioretti', 'Fioretti', 'Mr. Consistenza, Mr. Tarallo e i fioretti 2027') },
 
     // Chiusura
-    { title: 'Riepilogo delle votazioni', kind: 'recap', render: () => `<div class="inner"><h2>Cosa abbiamo deciso</h2><div class="recap-list" id="recap"></div></div>` },
-    { title: 'Chiusura', kind: 'end', render: () => `<div class="inner"><div class="eyebrow accent">Stagione 2026, chiusa</div><h2>Ci vediamo<br><span>mercoledì.</span></h2><p>Buon Natale, Rembrandts.</p></div>` }
+    { id: 'riepilogo', title: 'Riepilogo delle votazioni', kind: 'recap', render: () => `<div class="inner">${E('riepilogo.titolo', 'Cosa abbiamo deciso', 'h2')}<div class="recap-list" id="recap"></div></div>` },
+    { id: 'chiusura', title: 'Chiusura', kind: 'end', render: () => `<div class="inner">${E('chiusura.eyebrow', 'Stagione 2026, chiusa', 'div', 'eyebrow accent')}<h2>${E('chiusura.riga1', 'Ci vediamo')}<br><span data-edit="chiusura.riga2">mercoledì.</span></h2>${E('chiusura.saluto', 'Buon Natale, Rembrandts.', 'p')}</div>` }
   ];
   SLIDES.forEach((s, i) => { s.index = i; s.steps = s.steps || (s.kind === 'poll' ? 1 : 0); });
 
@@ -130,7 +129,7 @@
   // ===================================================================
 
   const stage = document.getElementById('stage');
-  const st = { i: 0, step: 0, pin: '', linked: false, active: false, sb: null, voters: [], polls: [], votes: [], lastSeq: null, el: null };
+  const st = { i: 0, step: 0, pin: '', linked: false, active: false, sb: null, voters: [], polls: [], votes: [], lastSeq: null, el: null, texts: {}, editing: false, seen: new Set() };
   st.session = Math.random().toString(36).slice(2) + Date.now().toString(36);
 
   // Nome del dispositivo, per far sapere al telefono dove gira la presentazione
@@ -162,12 +161,14 @@
 
   async function loadData() {
     const c = sb(); if (!c) return;
-    const [v, p, vt, r] = await Promise.all([
+    const [v, p, vt, r, tx] = await Promise.all([
       c.from('voters').select('name').order('ord'),
       c.from('polls').select('id,question,options,status'),
       c.from('votes').select('poll_id,voter,choice'),
-      c.from('gala_remote').select('seq').eq('id', 1).maybeSingle()
+      c.from('gala_remote').select('seq').eq('id', 1).maybeSingle(),
+      c.from('gala_texts').select('id,html')
     ]);
+    if (!tx.error) st.texts = Object.fromEntries(tx.data.map((t) => [t.id, t.html]));
     if (!v.error) st.voters = v.data.map((x) => x.name);
     if (!p.error) st.polls = p.data;
     if (!vt.error) st.votes = vt.data;
@@ -190,7 +191,40 @@
       .on('postgres_changes', { event: '*', schema: 'public', table: 'polls' }, onPolls)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'votes' }, onVotes)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'gala_remote' }, (e) => onRemote(e.new))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'gala_texts' }, onTexts)
       .subscribe((status) => setLink(status === 'SUBSCRIBED' ? (st.active || !st.linked ? 'on' : '') : (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') ? 'err' : ''));
+  }
+
+  // Chi apre Gran Galà nell'app si accende sulla copertina (e resta acceso per la serata)
+  function subscribePresence() {
+    const c = sb(); if (!c) return;
+    const ch = c.channel('gala-presenza', { config: { presence: { key: 'tv-' + st.session } } });
+    ch.on('presence', { event: 'sync' }, () => {
+      Object.values(ch.presenceState()).forEach((metas) => metas.forEach((m) => { if (m && m.name) st.seen.add(m.name); }));
+      paintRoom(st.el);
+    }).subscribe();
+  }
+
+  function paintRoom(root) {
+    const box = root && root.querySelector('[data-room]');
+    if (!box) return;
+    const names = st.voters;
+    box.closest('.room').hidden = !names.length;
+    if (box.dataset.names !== names.join('|')) {
+      box.dataset.names = names.join('|');
+      box.innerHTML = names.map((n) => `<div class="room-face" data-n="${esc(n)}" title="${esc(firstName(n))}">${avatar(n)}</div>`).join('');
+    }
+    let on = 0;
+    box.querySelectorAll('.room-face').forEach((f) => { const lit = st.seen.has(f.dataset.n); f.classList.toggle('on', lit); if (lit) on++; });
+    const cnt = root.querySelector('[data-room-count]');
+    if (cnt) cnt.textContent = `${on} su ${names.length}`;
+  }
+
+  async function onTexts() {
+    const { data, error } = await sb().from('gala_texts').select('id,html');
+    if (error) return;
+    st.texts = Object.fromEntries(data.map((t) => [t.id, t.html]));
+    if (st.el && !(document.activeElement && document.activeElement.isContentEditable)) applyTexts(st.el);
   }
 
   async function onPolls() {
@@ -262,6 +296,105 @@
     el.className = 'hud-link' + (cls ? ' ' + cls : '');
     el.title = cls === 'on' ? 'Collegata al telecomando' : cls === 'err' ? 'Collegamento perso' : 'Non collegata';
   }
+
+  // ===================================================================
+  // Testi modificabili
+  // ===================================================================
+
+  // Nei testi restano solo corsivo, grassetto e a capo.
+  function clean(html) {
+    const t = document.createElement('template');
+    t.innerHTML = html;
+    const walk = (node) => [...node.childNodes].map((n) => {
+      if (n.nodeType === 3) return esc(n.textContent);
+      if (n.nodeType !== 1) return '';
+      const tag = n.tagName.toLowerCase();
+      if (tag === 'br') return '<br>';
+      if (tag === 'em' || tag === 'i') return `<em>${walk(n)}</em>`;
+      if (tag === 'b' || tag === 'strong') return `<b>${walk(n)}</b>`;
+      if (tag === 'div' || tag === 'p') return '<br>' + walk(n);
+      return walk(n);
+    }).join('');
+    return walk(t.content).replace(/^(<br>)+|(<br>)+$/g, '').replace(/&nbsp;|\u00a0/g, ' ').trim();
+  }
+
+  function applyTexts(root) {
+    root.querySelectorAll('[data-edit]').forEach((el) => {
+      if (el.dataset.default === undefined) el.dataset.default = el.innerHTML;
+      const v = st.texts[el.dataset.edit];
+      el.innerHTML = v !== undefined ? clean(v) : el.dataset.default;
+    });
+  }
+
+  function makeEditable(root) {
+    root.querySelectorAll('[data-edit]').forEach((el) => {
+      el.contentEditable = st.editing ? 'true' : 'false';
+      el.spellcheck = false;
+      if (el.dataset.bound) return;
+      el.dataset.bound = '1';
+      el.addEventListener('focus', () => { el.dataset.before = el.innerHTML; });
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); el.blur(); }
+        if (e.key === 'Escape') { el.innerHTML = el.dataset.before; el.blur(); }
+        e.stopPropagation();
+      });
+      el.addEventListener('blur', async () => {
+        if (!st.editing || el.innerHTML === el.dataset.before) return;
+        let html = clean(el.innerHTML);
+        if (!html || html === clean(el.dataset.default)) html = '';
+        el.innerHTML = html || el.dataset.default;
+        if (html) st.texts[el.dataset.edit] = html; else delete st.texts[el.dataset.edit];
+        toast('Salvataggio...');
+        const { data, error } = await sb().rpc('regia_text', { p_key: st.pin, p_id: el.dataset.edit, p_html: html });
+        toast(!error && data === true ? (html ? 'Salvato' : 'Tornato al testo originale') : 'Non salvato: controlla la connessione');
+      });
+    });
+  }
+
+  function setEditing(on) {
+    if (on && !st.linked) { toast('Per modificare i testi serve il PIN: ricarica e inseriscilo'); return; }
+    st.editing = on;
+    document.body.classList.toggle('editing', on);
+    document.getElementById('hud-edit').textContent = on ? 'Fine modifica' : 'Modifica testi';
+    if (st.el) makeEditable(st.el);
+    if (!on && document.activeElement && document.activeElement.isContentEditable) document.activeElement.blur();
+    if (on) toast('Clicca un testo per riscriverlo. Invio salva, Esc annulla, testo vuoto torna all\'originale.');
+  }
+
+  let toastTimer;
+  function toast(text) {
+    const t = document.getElementById('toast');
+    t.textContent = text; t.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 3200);
+  }
+
+  // ===================================================================
+  // Vista d'insieme
+  // ===================================================================
+
+  const overview = document.getElementById('overview');
+  function openOverview() {
+    const grid = overview.querySelector('.ov-grid');
+    grid.innerHTML = SLIDES.map((s, i) => `<button type="button" class="ov-card${i === st.i ? ' current' : ''}" data-i="${i}">
+      <span class="ov-frame"><span class="ov-stage"><span class="slide in thumb ${s.kind}${s.kind === 'poll' ? ' vote' : ''}${s.black ? ' black' : ''}">${
+        s.video ? `<span class="ov-video">Video: ${esc(s.title)}</span>` : s.kind === 'poll' ? renderPoll(s) : s.render()
+      }</span></span></span>
+      <span class="ov-label"><b>${i + 1}</b>${esc(s.title)}</span>
+    </button>`).join('');
+    grid.querySelectorAll('.thumb').forEach((t) => { applyTexts(t); paintRoom(t); t.querySelectorAll('[id]').forEach((x) => x.removeAttribute('id')); });
+    grid.querySelectorAll('.ov-card').forEach((b) => b.addEventListener('click', () => { closeOverview(); go(+b.dataset.i); }));
+    overview.hidden = false;
+    fitThumbs();
+    const cur = grid.querySelector('.current'); if (cur) cur.scrollIntoView({ block: 'center' });
+  }
+  function fitThumbs() {
+    overview.querySelectorAll('.ov-frame').forEach((f) => { f.firstElementChild.style.transform = `scale(${f.clientWidth / 1920})`; });
+  }
+  addEventListener('resize', () => { if (!overview.hidden) fitThumbs(); });
+  function closeOverview() { overview.hidden = true; overview.querySelector('.ov-grid').innerHTML = ''; }
+  document.getElementById('hud-ov').addEventListener('click', () => (overview.hidden ? openOverview() : closeOverview()));
+  document.getElementById('ov-close').addEventListener('click', closeOverview);
+  document.getElementById('hud-edit').addEventListener('click', () => setEditing(!st.editing));
 
   // ===================================================================
   // Votazioni
@@ -428,6 +561,9 @@
     el.className = `slide ${s.kind}${s.kind === 'poll' ? ' vote' : ''}${s.black ? ' black' : ''}`;
     el.setAttribute('aria-label', s.title);
     el.innerHTML = s.kind === 'poll' ? renderPoll(s) : s.render();
+    applyTexts(el);
+    paintRoom(el);
+    makeEditable(el);
     stage.appendChild(el);
     st.el = el;
     requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('in')));
@@ -485,14 +621,17 @@
 
   addEventListener('keydown', (e) => {
     if (!document.getElementById('start').hidden) return;
-    if (e.target.closest && e.target.closest('select, input')) return;
+    if (e.target.isContentEditable || (e.target.closest && e.target.closest('select, input'))) return;
     const k = e.key.toLowerCase();
+    if (k === 'escape') { if (!overview.hidden) closeOverview(); else if (st.editing) setEditing(false); return; }
+    if (k === 'o') { if (overview.hidden) openOverview(); else closeOverview(); return; }
+    if (!overview.hidden) return;
     if (['arrowright', 'arrowdown', ' ', 'pagedown', 'enter'].includes(k)) { e.preventDefault(); next(); }
     else if (['arrowleft', 'arrowup', 'pageup', 'backspace'].includes(k)) { e.preventDefault(); prev(); }
     else if (k === 'f') toggleFs();
     else if (k === 'home') go(0);
   });
-  stage.addEventListener('click', () => { if (document.getElementById('start').hidden) next(); });
+  stage.addEventListener('click', () => { if (document.getElementById('start').hidden && !st.editing) next(); });
 
   let idle;
   const wake = () => {
@@ -531,7 +670,7 @@
     }
     toggleFs();
     startEl.hidden = true;
-    try { await loadData(); await syncPolls(); subscribe(); await claim(); } catch (e) { setLink('err'); }
+    try { await loadData(); await syncPolls(); subscribe(); subscribePresence(); await claim(); } catch (e) { setLink('err'); }
     if (st.linked) {
       setInterval(reportState, 20000);
       addEventListener('pagehide', () => {
@@ -548,6 +687,27 @@
     const saved = parseInt(store.get(POS_STORE), 10);
     show(Number.isFinite(saved) && saved > 0 && saved < SLIDES.length ? saved : 0);
   }
+  // Prova audio: un accordo a sinistra, a destra o su tutte e due le casse, senza toccare l'inno
+  let actx;
+  function chime(pan) {
+    try {
+      actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+      if (actx.state === 'suspended') actx.resume();
+      const t0 = actx.currentTime + 0.02;
+      const out = actx.createStereoPanner ? actx.createStereoPanner() : actx.createGain();
+      if (out.pan) out.pan.value = pan;
+      out.connect(actx.destination);
+      [523.25, 659.25, 783.99, 1046.5].forEach((f, k) => {
+        const o = actx.createOscillator(); const g = actx.createGain();
+        o.type = 'triangle'; o.frequency.value = f;
+        const t = t0 + k * 0.14;
+        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.35, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.1);
+        o.connect(g); g.connect(out); o.start(t); o.stop(t + 1.2);
+      });
+    } catch (e) { /* niente */ }
+  }
+  document.querySelectorAll('[data-chime]').forEach((b) => b.addEventListener('click', () => chime(+b.dataset.chime)));
+
   document.getElementById('taken-go').addEventListener('click', claim);
   goBtn.addEventListener('click', () => begin(true));
   pinEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') begin(true); });

@@ -195,6 +195,11 @@
   function subscribePresence() {
     const c = sb(); if (!c) return;
     const ch = c.channel('gala-presenza', { config: { presence: { key: 'tv-' + st.session } } });
+    ch.on('broadcast', { event: 'who' }, ({ payload: m }) => {
+      if (!m || !m.dev) return;
+      if (m.name) st.devs.set(m.dev, m.name); else st.devs.delete(m.dev);
+      paintRoom(st.el);
+    });
     ch.on('presence', { event: 'sync' }, () => {
       // Ogni telefono conta per un nome solo; chi si è collegato resta acceso anche se poi blocca il telefono.
       Object.values(ch.presenceState()).forEach((metas) => metas.forEach((m) => {

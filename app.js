@@ -1307,7 +1307,10 @@ function deviceId() {
 }
 function trackMe() {
   if (!presence) return;
-  presence.track({ dev: deviceId(), name: getVoter() || null }).catch(() => {});
+  const who = { dev: deviceId(), name: getVoter() || null };
+  presence.track(who).catch(() => {});
+  // La presenza può metterci qualche secondo a fare il giro dei server: questo messaggio arriva subito.
+  presence.send({ type: 'broadcast', event: 'who', payload: who }).catch(() => {});
 }
 
 function renderGala() {

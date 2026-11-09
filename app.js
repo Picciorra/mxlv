@@ -1160,11 +1160,13 @@ const RULES = [
 const ruleState = { open: 2 };
 const waLink = (text) => 'https://wa.me/?text=' + encodeURIComponent(text);
 
-function renderRegolamento() {
+function renderUtility() {
   $content.innerHTML = `
-    <div class="title-block"><h1>Regolamento</h1><p class="muted">Edizione 2026</p></div>
+    <div class="title-block"><h1>Utility</h1><p class="muted">Inno, regolamento e Gran Galà</p></div>
 
     ${anthemHTML()}
+
+    <h2 class="section-title util-title">Regolamento MXLV 2026</h2>
 
     <section class="stat-grid two" aria-label="Regole in breve">
       <div class="card quick"><span class="quick-num">25 km</span><span class="label">da Piazza Grande, su strada</span></div>
@@ -1195,7 +1197,10 @@ function renderRegolamento() {
     </section>
 
     <a class="btn-primary" href="${waLink('Proposta di nuova regola MXLV: ')}" target="_blank" rel="noopener">${icons.plus}Proponi una nuova regola</a>
-    <p class="muted small center">Si apre WhatsApp con il messaggio pronto da mandare nel gruppo.</p>`;
+    <p class="muted small center">Si apre WhatsApp con il messaggio pronto da mandare nel gruppo.</p>
+
+    <h2 class="section-title util-title">Gran Galà</h2>
+    <div class="note gala-empty">In arrivo per la serata di fine anno.</div>`;
 
   $content.querySelectorAll('[data-rule]').forEach((b) => b.addEventListener('click', () => {
     const n = +b.dataset.rule;
@@ -1214,7 +1219,7 @@ const ROUTES = {
   mercoledi: { tab: 'mercoledi', view: renderMercoledi, title: 'Mercoledì' },
   classifica: { tab: 'classifica', view: renderClassifica, title: 'Classifica' },
   calendario: { tab: 'calendario', view: renderCalendario, title: 'Calendario' },
-  regolamento: { tab: 'regolamento', view: renderRegolamento, title: 'Regolamento', static: true },
+  utility: { tab: 'utility', view: renderUtility, title: 'Utility', static: true },
   profilo: { tab: 'classifica', view: renderProfilo, title: 'Profilo' },
   serata: { tab: 'calendario', view: renderSerata, title: 'Serata' }
 };
@@ -1224,6 +1229,7 @@ let inAppNavs = 0;
 function currentRoute() {
   let [name, arg] = location.hash.slice(1).split('/');
   if (name === 'storico') { name = 'calendario'; calState.view = 'past'; }
+  if (name === 'regolamento') name = 'utility'; // vecchi link
   return ROUTES[name] ? { name, arg: decodeURIComponent(arg || ''), ...ROUTES[name] } : { name: 'mercoledi', arg: '', ...ROUTES.mercoledi };
 }
 

@@ -782,3 +782,6 @@ a.card:active, a.row:active, .rule:has(.rule-head:active) { background: var(--su
 }
 .pull-hint.show { visibility: visible; }
 .pull-hint.ready { color: var(--accent); }
+
+/* Utility */
+.util-title { margin: 14px 0 -2px; }

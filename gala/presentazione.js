@@ -130,7 +130,20 @@
   // ===================================================================
 
   const stage = document.getElementById('stage');
-  const st = { i: 0, step: 0, pin: '', linked: false, sb: null, voters: [], polls: [], votes: [], lastSeq: null, el: null };
+  const st = { i: 0, step: 0, pin: '', linked: false, active: false, sb: null, voters: [], polls: [], votes: [], lastSeq: null, el: null };
+  st.session = Math.random().toString(36).slice(2) + Date.now().toString(36);
+
+  // Nome del dispositivo, per far sapere al telefono dove gira la presentazione
+  function deviceLabel() {
+    const ua = navigator.userAgent;
+    const os = /iPad|Macintosh/.test(ua) && navigator.maxTouchPoints > 1 ? 'iPad'
+      : /iPhone/.test(ua) ? 'iPhone' : /Android/.test(ua) ? 'Android'
+      : /Mac OS X|Macintosh/.test(ua) ? 'Mac' : /Windows/.test(ua) ? 'Windows'
+      : /CrOS/.test(ua) ? 'Chromebook' : /Linux/.test(ua) ? 'Linux' : 'Computer';
+    const br = /Edg\//.test(ua) ? 'Edge' : /OPR\//.test(ua) ? 'Opera' : /Firefox\//.test(ua) ? 'Firefox'
+      : /Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : 'browser';
+    return `${os}, ${br}`;
+  }
 
   function fit() {
     const s = Math.min(innerWidth / 1920, innerHeight / 1080);
@@ -177,7 +190,7 @@
       .on('postgres_changes', { event: '*', schema: 'public', table: 'polls' }, onPolls)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'votes' }, onVotes)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'gala_remote' }, (e) => onRemote(e.new))
-      .subscribe((status) => setLink(status === 'SUBSCRIBED' ? 'on' : (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') ? 'err' : ''));
+      .subscribe((status) => setLink(status === 'SUBSCRIBED' ? (st.active || !st.linked ? 'on' : '') : (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') ? 'err' : ''));
   }
 
   async function onPolls() {
@@ -204,7 +217,10 @@
     if (cur.kind === 'recap') paintRecap();
   }
   function onRemote(row) {
-    if (!row || st.lastSeq === null) { if (row) st.lastSeq = row.seq; return; }
+    if (!row) return;
+    if (st.active && row.session && row.session !== st.session) loseControl(row.device);
+    if (!st.active) { st.lastSeq = row.seq; return; }
+    if (st.lastSeq === null) { st.lastSeq = row.seq; return; }
     if (row.seq <= st.lastSeq) return;
     st.lastSeq = row.seq;
     const cmd = row.cmd || '';
@@ -214,14 +230,31 @@
     else if (cmd.startsWith('goto:')) go(+cmd.slice(5));
   }
 
-  function reportState() {
+  async function claim() {
     if (!st.linked) return;
+    const { data, error } = await sb().rpc('regia_claim', { p_key: st.pin, p_session: st.session, p_device: deviceLabel() });
+    if (error || data !== true) { setLink('err'); return; }
+    st.active = true;
+    document.getElementById('taken').hidden = true;
+    reportState();
+  }
+
+  function loseControl(device) {
+    st.active = false;
+    document.getElementById('taken-dev').textContent = device || 'un altro dispositivo';
+    document.getElementById('taken').hidden = false;
+    setLink('');
+  }
+
+  function reportState() {
+    if (!st.linked || !st.active) return;
     const s = SLIDES[st.i];
     const n = SLIDES[st.i + 1];
     const row = pollRow(s);
     let title = s.title;
     if (s.steps) title += ` (${st.step}/${s.steps})`;
-    sb().rpc('regia_state', { p_key: st.pin, p_slide: st.i, p_total: SLIDES.length, p_title: title, p_next: n ? n.title : 'Fine', p_poll: row ? row.id : null }).then(() => {}, () => {});
+    sb().rpc('regia_state', { p_key: st.pin, p_session: st.session, p_slide: st.i, p_total: SLIDES.length, p_title: title, p_next: n ? n.title : 'Fine', p_poll: row ? row.id : null })
+      .then(({ data, error }) => { if (!error && data === false && st.active) loseControl(''); }, () => {});
   }
 
   function setLink(cls) {
@@ -287,6 +320,7 @@
     el.querySelectorAll('.voter').forEach((v) => v.classList.toggle('in', voters.includes(v.dataset.v)));
     const note = el.querySelector('.vote-note');
     note.textContent = !st.linked ? 'Non collegata: inserisci il PIN regia per aprire la votazione.'
+      : !st.active ? 'La regia è su un altro dispositivo.'
       : !row ? 'Domanda non ancora nel database.'
       : s.hideLive && !closed ? 'I risultati compaiono alla chiusura.' : '';
   }
@@ -295,7 +329,7 @@
     const row = pollRow(s);
     if (!row) { paintPoll(); return; }
     if (row.status === 'closed') { st.step = 1; paintPoll(); return; }
-    if (row.status === 'draft' && st.linked && st.step === 0) {
+    if (row.status === 'draft' && st.active && st.step === 0) {
       await sb().rpc('regia_open', { p_key: st.pin, p_poll: row.id });
       row.status = 'open';
     }
@@ -307,7 +341,7 @@
     if (!row || row.status !== 'open') { paintPoll(); return; }
     row.status = 'closed';
     paintPoll(); reveal();
-    if (st.linked) await sb().rpc('regia_close', { p_key: st.pin, p_poll: row.id });
+    if (st.active) await sb().rpc('regia_close', { p_key: st.pin, p_poll: row.id });
   }
 
   function reveal() {
@@ -376,7 +410,7 @@
     // Andando avanti oltre una votazione aperta, la votazione si chiude.
     if (dir > 0 && prevSlide && prevSlide.kind === 'poll' && st.i !== i) {
       const row = pollRow(prevSlide);
-      if (row && row.status === 'open' && st.linked) { row.status = 'closed'; sb().rpc('regia_close', { p_key: st.pin, p_poll: row.id }); }
+      if (row && row.status === 'open' && st.active) { row.status = 'closed'; sb().rpc('regia_close', { p_key: st.pin, p_poll: row.id }); }
     }
     st.i = Math.max(0, Math.min(SLIDES.length - 1, i));
     st.step = step;
@@ -490,10 +524,24 @@
     }
     toggleFs();
     startEl.hidden = true;
-    try { await loadData(); await syncPolls(); subscribe(); } catch (e) { setLink('err'); }
+    try { await loadData(); await syncPolls(); subscribe(); await claim(); } catch (e) { setLink('err'); }
+    if (st.linked) {
+      setInterval(reportState, 20000);
+      addEventListener('pagehide', () => {
+        if (!st.active) return;
+        try {
+          fetch(SB_URL + '/rest/v1/rpc/regia_bye', {
+            method: 'POST', keepalive: true,
+            headers: { 'Content-Type': 'application/json', apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY },
+            body: JSON.stringify({ p_key: st.pin, p_session: st.session })
+          });
+        } catch (e) { /* niente */ }
+      });
+    }
     const saved = parseInt(store.get(POS_STORE), 10);
     show(Number.isFinite(saved) && saved > 0 && saved < SLIDES.length ? saved : 0);
   }
+  document.getElementById('taken-go').addEventListener('click', claim);
   goBtn.addEventListener('click', () => begin(true));
   pinEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') begin(true); });
   document.getElementById('start-skip').addEventListener('click', () => begin(false));

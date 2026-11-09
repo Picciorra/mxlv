@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="gala/presentazione.css?v=2">
+  <link rel="stylesheet" href="gala/presentazione.css?v=3">
 </head>
 <body>
   <div class="viewport">
@@ -29,6 +29,14 @@
     </div>
   </div>
 
+  <div class="taken" id="taken" hidden>
+    <div class="taken-box">
+      <b>La regia è passata a <span id="taken-dev">un altro dispositivo</span></b>
+      <span>Il telecomando adesso comanda l'altra presentazione. Questa resta ferma.</span>
+      <button type="button" id="taken-go">Riprendi la regia qui</button>
+    </div>
+  </div>
+
   <nav class="hud" id="hud" aria-label="Controlli presentazione">
     <button type="button" id="hud-prev" aria-label="Slide precedente">◀</button>
     <select id="hud-jump" aria-label="Vai alla slide"></select>
@@ -39,6 +47,6 @@
 
   <script src="lib/supabase.js?v=2.45.4"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="gala/presentazione.js?v=2"></script>
+  <script src="gala/presentazione.js?v=3"></script>
 </body>
 </html>

@@ -856,3 +856,10 @@ a.card:active, a.row:active, .rule:has(.rule-head:active) { background: var(--su
 .remote-btn:disabled { opacity: .6; }
 .remote-foot { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .remote-foot .btn-ghost { background: transparent; font-family: var(--body); cursor: pointer; }
+.remote-off { padding: 18px; display: flex; align-items: flex-start; gap: 14px; }
+.remote-off b { font-size: 16px; }
+.remote-off p { margin: 4px 0 0; }
+.remote-off-dot { margin-top: 5px; width: 12px; height: 12px; border-radius: 999px; background: var(--faint); flex-shrink: 0; }
+.remote-dev { display: inline-flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 13px; font-weight: 600; color: var(--text-2); }
+.remote-dev .live-dot { width: 8px; height: 8px; }
+.remote-big:disabled { opacity: .35; cursor: default; }

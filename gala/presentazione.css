@@ -180,6 +180,14 @@ canvas.fx { position: absolute; inset: 0; pointer-events: none; }
 .start-skip { height: 44px; border: 0; background: transparent; color: var(--muted); font-family: var(--font); font-size: 14px; font-weight: 500; cursor: pointer; }
 .start-go:focus-visible, .start-skip:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
 
+/* --- Regia passata a un altro dispositivo --- */
+.taken { position: fixed; left: 0; right: 0; top: 0; z-index: 15; display: flex; justify-content: center; padding: calc(18px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); pointer-events: none; }
+.taken[hidden] { display: none; }
+.taken-box { pointer-events: auto; display: flex; flex-direction: column; gap: 6px; max-width: 560px; padding: 16px 18px; border-radius: 16px; background: rgba(22,25,30,.96); border: 1px solid var(--gold); }
+.taken-box b { font-size: 16px; }
+.taken-box span { font-size: 14px; color: var(--muted); line-height: 1.4; }
+.taken-box button { align-self: flex-start; margin-top: 6px; min-height: 40px; padding: 0 16px; border: 0; border-radius: 12px; background: var(--accent); color: var(--accent-ink); font-family: var(--font); font-weight: 700; font-size: 14px; cursor: pointer; }
+
 /* --- Controlli per la regia sul portatile --- */
 .hud { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); display: flex; gap: 8px; align-items: center; padding: 8px 10px; border-radius: 999px; background: rgba(22,25,30,.92); border: 1px solid var(--line); opacity: 0; pointer-events: none; transition: opacity .4s ease; z-index: 10; max-width: calc(100vw - 32px); }
 body.awake .hud { opacity: 1; pointer-events: auto; }

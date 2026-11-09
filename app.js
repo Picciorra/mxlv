@@ -1334,7 +1334,7 @@ function setPin(v) { try { if (v) localStorage.setItem(PIN_KEY, v); else localSt
 
 async function remoteFetch() {
   const sb = await loadSupabase();
-  const { data, error } = await sb.from('gala_remote').select('slide,total,title,next_title,poll_id,state_at').eq('id', 1).maybeSingle();
+  const { data, error } = await sb.from('gala_remote').select('slide,total,title,next_title,poll_id,state_at,device').eq('id', 1).maybeSingle();
   if (error) throw error;
   remote.row = data;
   remote.poll = null; remote.votes = 0;
@@ -1363,8 +1363,23 @@ function remoteBody() {
   if (remote.error) return '<div class="note"><span>Non riesco a collegarmi alla presentazione. Controlla la connessione e riprova.</span><button type="button" id="remote-retry">Riprova</button></div>';
   const r = remote.row;
   if (!r) return '<div class="skeleton row-skel"></div><div class="skeleton row-skel"></div>';
-  const fresh = r.state_at && (Date.now() - new Date(r.state_at).getTime()) < 6 * 3600e3;
-  const p = remote.poll;
+  // La presentazione aggiorna lo stato ogni 20 secondi: oltre un minuto di silenzio vuol dire che non è aperta.
+  const fresh = r.state_at && (Date.now() - new Date(r.state_at).getTime()) < 60e3;
+  const p = fresh ? remote.poll : null;
+  if (!fresh) {
+    return `<section class="card remote-off" aria-live="polite">
+      <span class="remote-off-dot" aria-hidden="true"></span>
+      <div><b>Nessuna presentazione in corso</b><p class="muted small">Apri la presentazione sul portatile e inserisci il PIN: il telecomando si collega da solo.</p></div>
+    </section>
+    <div class="remote-pad">
+      <button type="button" class="remote-big prev" disabled>Indietro</button>
+      <button type="button" class="remote-big next" disabled>Avanti</button>
+    </div>
+    <div class="remote-foot">
+      <span></span>
+      <button type="button" class="btn-ghost" id="remote-logout">Esci dalla regia</button>
+    </div>`;
+  }
   const pollCard = p ? `<section class="card remote-poll">
       <span class="gala-live"><span class="live-dot${p.status === 'open' ? '' : ' off'}" aria-hidden="true"></span>${p.status === 'open' ? 'Votazione aperta' : p.status === 'closed' ? 'Votazione chiusa' : 'Votazione in attesa'}</span>
       <b class="remote-q">${esc(p.question)}</b>
@@ -1377,9 +1392,10 @@ function remoteBody() {
       </div>
     </section>` : '';
   return `<section class="card remote-now" aria-live="polite">
-      <span class="remote-label">${fresh ? `In onda, ${r.slide + 1} di ${r.total}` : 'Presentazione non avviata'}</span>
-      <b class="remote-title">${esc(fresh ? r.title || '' : 'Apri la presentazione sul portatile')}</b>
-      ${fresh ? `<span class="remote-next">Dopo: ${esc(r.next_title || '')}</span>` : ''}
+      <span class="remote-label">In onda, ${r.slide + 1} di ${r.total}</span>
+      <b class="remote-title">${esc(r.title || '')}</b>
+      <span class="remote-next">Dopo: ${esc(r.next_title || '')}</span>
+      <span class="remote-dev"><span class="live-dot" aria-hidden="true"></span>Presentazione su ${esc(r.device || 'un dispositivo')}</span>
     </section>
     <div class="remote-pad">
       <button type="button" class="remote-big prev" data-cmd="prev" aria-label="Slide precedente">Indietro</button>
@@ -1472,10 +1488,12 @@ function renderTelecomando() {
   };
   paintRemote();
   if (remote.pin) remoteStart();
+  const tick = setInterval(() => { if (remote.pin && remote.row && !remote.busy && !document.querySelector('#remote-pin:focus')) paintRemote(); }, 10000);
   const onVisible = () => { if (document.visibilityState === 'visible' && remote.pin) remoteReload(); };
   document.addEventListener('visibilitychange', onVisible);
   pageCleanup = () => {
     alive = false;
+    clearInterval(tick);
     document.removeEventListener('visibilitychange', onVisible);
     if (channel && sbClient) sbClient.removeChannel(channel);
   };

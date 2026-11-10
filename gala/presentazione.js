@@ -60,10 +60,7 @@
 
     // Atto 2 - La stagione
     { id: 'atto2', title: 'Atto 2 - La stagione', kind: 'divider', render: divider('atto2', 'Atto 2', 'La stagione') },
-    { id: 'numeri', title: 'I numeri dell\'anno', kind: 'todo', render: todo('numeri', 'La stagione', 'I numeri dell\'anno', 'Serate giocate, presenze totali, Cene Stirate, Mister X. Niente AR né posizioni.') },
-    { id: 'catalogo', title: 'Catalogo delle serate', kind: 'todo', render: todo('catalogo', 'La stagione', 'Catalogo delle serate') },
-    { id: 'statistiche', title: 'Statistiche', kind: 'todo', render: todo('statistiche', 'La stagione', 'Statistiche', 'L\'Età dell\'Oro, il Grande Crollo estivo e le altre curiosità.') },
-    { id: 'confronto', title: 'Confronto con gli anni passati', kind: 'todo', render: todo('confronto', 'La stagione', 'Confronto con gli anni passati', '2024, 2025 e 2026 a livello di gruppo.') },
+    ...(window.GALA_ATTO2 ? window.GALA_ATTO2({ E, esc, avatar }) : []),
 
     // Atto 3 - Oscar
     { id: 'atto3', title: 'Atto 3 - Oscar del Mercoledì', kind: 'divider', render: divider('atto3', 'Atto 3', 'Oscar del Mercoledì') },
@@ -535,9 +532,12 @@
   // Navigazione
   // ===================================================================
 
-  function applySteps() {
+  function applySteps(from) {
     const s = SLIDES[st.i]; const el = st.el; if (!el) return;
-    if (s.kind === 'keynote') {
+    if (s.onStep) {
+      el.querySelectorAll('[data-at]').forEach((x) => x.classList.toggle('show', st.step >= +x.dataset.at));
+      s.onStep(el, st.step, from === undefined ? st.step : from);
+    } else if (s.kind === 'keynote') {
       el.querySelectorAll('[data-at]').forEach((x) => {
         const at = +x.dataset.at;
         const isLine = x.classList.contains('kl');
@@ -585,6 +585,7 @@
     }
     if (s.kind === 'poll') enterPoll(s).then(reportState);
     if (s.kind === 'recap') paintRecap();
+    if (s.onEnter) s.onEnter(el, st.step);
     applySteps();
     syncJump();
     store.set(POS_STORE, String(st.i));
@@ -594,14 +595,15 @@
   function next() {
     const s = SLIDES[st.i];
     if (st.step < s.steps) {
+      const from = st.step;
       st.step++;
       if (s.kind === 'poll' && st.step === 1) closePoll(s);
-      applySteps(); reportState();
+      applySteps(from); reportState();
     } else if (st.i < SLIDES.length - 1) show(st.i + 1, 0, 1);
   }
   function prev() {
     const s = SLIDES[st.i];
-    if (st.step > 0 && s.kind !== 'poll') { st.step--; applySteps(); reportState(); }
+    if (st.step > 0 && s.kind !== 'poll') { const from = st.step; st.step--; applySteps(from); reportState(); }
     else if (st.i > 0) { const p = SLIDES[st.i - 1]; show(st.i - 1, p.kind === 'poll' ? 0 : p.steps, -1); }
   }
   function go(i) { if (i >= 0 && i < SLIDES.length) show(i, 0, i > st.i ? 1 : -1); }
